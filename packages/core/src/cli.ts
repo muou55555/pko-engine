@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-/** pko 命令行入口：doctor / normalize / hook。 */
+/** pko 命令行入口：doctor / normalize / query / context / hook。 */
 import { join, resolve } from 'node:path'
 import type { DoctorReport, Severity } from './types.ts'
+import { bodyContext, sessionContext, taskContext } from './context.ts'
 import { runDoctor } from './doctor.ts'
 import { runHook } from './hook.ts'
 import { acquireLock } from './lock.ts'
 import { extraFields, normalizePage, renderPage } from './normalize.ts'
 import { vaultPaths } from './paths.ts'
+import { retrieve } from './retrieve.ts'
 import { parseFrontmatter } from './schema.ts'
 import { atomicWrite, readIfExists } from './store.ts'
 import { scanVault, stemOf } from './vault.ts'
@@ -15,13 +17,17 @@ import { appendLogLine, stamp } from './writer.ts'
 const USAGE = `pko — PKO 知识引擎 CLI
 
 用法：
-  pko doctor --vault <路径> [--json]
+  pko doctor    --vault <路径> [--json]
   pko normalize --vault <路径> [--apply]
-  pko hook [--vault <路径>]        从 stdin 读取宿主事件 JSON
+  pko query <词> --vault <路径> [--json] [--mode auto|index-only] [--max N] [--deep]
+  pko context   --vault <路径> [--task "<原话>"] [--page <id>] [--json]
+  pko hook      [--vault <路径>]        从 stdin 读取宿主事件 JSON
 
 命令：
   doctor     审计 vault：frontmatter / 断链 / 孤儿页 / 重复 id
-  normalize  补齐缺失的 frontmatter 字段（默认 dry-run，--apply 才写）
+  normalize  补齐缺失的 frontmatter 字段（默认 dry-run）
+  query      分层检索：index → 标题/标签/摘要 → 正文 → 双链邻居
+  context    输出三档上下文之一：会话档 / 任务档 / 整页档
   hook       宿主钩子统一入口（Claude Code settings.json 调用）
 
 退出码：doctor 有 error 为 1；用法错误为 2；hook 拒绝为 2。
@@ -29,9 +35,15 @@ const USAGE = `pko — PKO 知识引擎 CLI
 
 interface Args {
   readonly command: string
+  readonly positional: readonly string[]
   readonly vault: string
   readonly json: boolean
   readonly apply: boolean
+  readonly deep: boolean
+  readonly mode: 'auto' | 'index-only'
+  readonly max: number
+  readonly task: string | undefined
+  readonly page: string | undefined
 }
 
 /**
@@ -44,37 +56,42 @@ function parseArgs(argv: readonly string[]): Args {
   let vault = '.'
   let json = false
   let apply = false
+  let deep = false
+  let mode: 'auto' | 'index-only' = 'auto'
+  let max = 10
+  let task: string | undefined
+  let page: string | undefined
+  const positional: string[] = []
+
+  const valueAt = (index: number, flag: string): string => {
+    const value = argv[index + 1]
+    if (value === undefined) {
+      process.stderr.write(`pko: ${flag} 需要一个值\n`)
+      process.exit(2)
+    }
+    return value
+  }
+
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] as string
-    if (arg === '--vault') {
-      vault = argv[index + 1] ?? '.'
+    if (arg === '--vault') { vault = valueAt(index, '--vault'); index += 1; continue }
+    if (arg === '--task') { task = valueAt(index, '--task'); index += 1; continue }
+    if (arg === '--page') { page = valueAt(index, '--page'); index += 1; continue }
+    if (arg === '--max') { max = Number(valueAt(index, '--max')); index += 1; continue }
+    if (arg === '--mode') {
+      mode = valueAt(index, '--mode') === 'index-only' ? 'index-only' : 'auto'
       index += 1
       continue
     }
-    if (arg === '--json') {
-      json = true
-      continue
-    }
-    if (arg === '--apply') {
-      apply = true
-      continue
-    }
-    if (arg === '--dry-run') {
-      apply = false
-      continue
-    }
-    if (arg === '--help' || arg === '-h') {
-      process.stdout.write(USAGE)
-      process.exit(0)
-    }
-    if (command === '') {
-      command = arg
-      continue
-    }
-    process.stderr.write(`pko: 未知参数 ${arg}\n`)
-    process.exit(2)
+    if (arg === '--json') { json = true; continue }
+    if (arg === '--apply') { apply = true; continue }
+    if (arg === '--dry-run') { apply = false; continue }
+    if (arg === '--deep') { deep = true; continue }
+    if (arg === '--help' || arg === '-h') { process.stdout.write(USAGE); process.exit(0) }
+    if (command === '') { command = arg; continue }
+    positional.push(arg)
   }
-  return { command, vault, json, apply }
+  return { command, positional, vault, json, apply, deep, mode, max, task, page }
 }
 
 /** 读取 stdin 全部内容；TTY 下返回空串。 */
@@ -89,7 +106,7 @@ const LABEL: Record<Severity, string> = { error: 'error', warn: 'warn ', info: '
 const ORDER: readonly Severity[] = ['error', 'warn', 'info']
 
 /**
- * 以人类可读格式打印报告。
+ * 以人类可读格式打印审计报告。
  * @param report doctor 报告
  */
 function printReport(report: DoctorReport): void {
@@ -114,7 +131,7 @@ function printReport(report: DoctorReport): void {
  * @param apply true = 写盘
  * @returns 退出码
  */
-async function runNormalizeCommand(vault: string, apply: boolean): Promise<number> {
+async function runNormalize(vault: string, apply: boolean): Promise<number> {
   const root = resolve(vault)
   const { pages } = await scanVault(root)
   const pending = pages
@@ -150,6 +167,58 @@ async function runNormalizeCommand(vault: string, apply: boolean): Promise<numbe
 }
 
 /**
+ * query 子命令。
+ * @param args 解析后的参数
+ * @returns 退出码
+ */
+async function runQuery(args: Args): Promise<number> {
+  const query = args.positional.join(' ').trim()
+  if (query === '') {
+    process.stderr.write('pko: query 需要一个检索词\n')
+    return 2
+  }
+  const result = await retrieve(resolve(args.vault), query, {
+    mode: args.mode,
+    maxCandidates: args.max,
+    deep: args.deep,
+  })
+  if (args.json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return 0
+  }
+  process.stdout.write(`检索到 ${result.candidates.length} 条（策略 ${result.strategy}），共 ${result.totalPages} 页\n`)
+  result.candidates.forEach((candidate, index) => {
+    process.stdout.write(`${index + 1}. ${candidate.score}  ${candidate.path} — ${candidate.title}  [${candidate.matchedBy}]\n`)
+    if (candidate.snippet !== undefined) process.stdout.write(`   ${candidate.snippet}\n`)
+  })
+  return 0
+}
+
+/**
+ * context 子命令。
+ * @param args 解析后的参数
+ * @returns 退出码
+ */
+async function runContext(args: Args): Promise<number> {
+  const root = resolve(args.vault)
+  const context = args.page !== undefined
+    ? await bodyContext(root, args.page)
+    : args.task !== undefined
+      ? await taskContext(root, args.task)
+      : await sessionContext(root)
+  if (context === undefined) {
+    process.stdout.write('pko: 没有可注入的上下文\n')
+    return 0
+  }
+  if (args.json) {
+    process.stdout.write(`${JSON.stringify(context, null, 2)}\n`)
+    return 0
+  }
+  process.stdout.write(`${context.text}\n`)
+  return 0
+}
+
+/**
  * hook 子命令：读 stdin，分派后把结果写回宿主协议。
  * @param vault vault 根目录
  * @returns 退出码（2 = 拒绝）
@@ -176,12 +245,10 @@ try {
     else printReport(report)
     process.exit(report.counts.error > 0 ? 1 : 0)
   }
-  if (args.command === 'normalize') {
-    process.exit(await runNormalizeCommand(args.vault, args.apply))
-  }
-  if (args.command === 'hook') {
-    process.exit(await runHookCommand(args.vault))
-  }
+  if (args.command === 'normalize') process.exit(await runNormalize(args.vault, args.apply))
+  if (args.command === 'query') process.exit(await runQuery(args))
+  if (args.command === 'context') process.exit(await runContext(args))
+  if (args.command === 'hook') process.exit(await runHookCommand(args.vault))
   process.stderr.write(`pko: 未知命令 ${args.command}\n`)
   process.exit(2)
 } catch (error) {

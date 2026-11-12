@@ -15,6 +15,7 @@ import { atomicWrite, readIfExists } from './store.ts'
 import { parseFrontmatter } from './schema.ts'
 import { toPage, stemOf } from './vault.ts'
 import { existsFile, recordActivity } from './writer.ts'
+import { taskContext } from './context.ts'
 
 export interface HookOutcome {
   readonly exit: number
@@ -109,6 +110,20 @@ async function postTool(options: HookOptions, input: Record<string, unknown>): P
   }
 }
 
+/**
+ * UserPromptSubmit：按用户这一轮的原话召回相关知识。
+ *
+ * Claude Code 侧靠这个钩子获得「该查的时候提醒你」的能力，
+ * 语义上与 DSH 的 `agent/pre-step` 对齐。
+ */
+async function promptSubmit(options: HookOptions, input: Record<string, unknown>): Promise<HookOutcome> {
+  const prompt = typeof input.prompt === 'string' ? input.prompt : ''
+  if (prompt.trim() === '') return OK
+  const context = await taskContext(options.vault, prompt)
+  if (context === undefined) return OK
+  return { exit: 0, stdout: `${context.text}\n`, stderr: '' }
+}
+
 /** Stop：vault 有改动但 hot.md 未更新时提醒。 */
 async function stop(options: HookOptions): Promise<HookOutcome> {
   const paths = vaultPaths(options.vault)
@@ -161,6 +176,8 @@ export async function runHook(rawInput: string, options: HookOptions): Promise<H
       return preTool(options, input)
     case 'PostToolUse':
       return postTool(options, input)
+    case 'UserPromptSubmit':
+      return promptSubmit(options, input)
     case 'Stop':
       return stop(options)
     default:

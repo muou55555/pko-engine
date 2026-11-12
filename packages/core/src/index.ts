@@ -27,3 +27,9 @@ export { appendLogLine, existsFile, recordActivity, stamp, writePage } from './w
 export type { HookOptions, HookOutcome } from './hook.ts'
 export { runHook } from './hook.ts'
 export { CORE_VERSION, PRODUCED_BY } from './version.ts'
+
+export { estimateTokens, clipToTokens, tokenizeQuery } from './tokens.ts'
+export type { Candidate, MatchedBy, RetrievalResult, RetrieveOptions } from './retrieve.ts'
+export { retrieve } from './retrieve.ts'
+export type { ContextOptions, ContextResult, ContextTier } from './context.ts'
+export { DEFAULT_BUDGET, bodyContext, sessionContext, taskContext } from './context.ts'
