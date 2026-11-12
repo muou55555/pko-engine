@@ -1,0 +1,16 @@
+{
+  "name": "@pko/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "PKO knowledge engine core: schema, vault scan, doctor",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "pko": "./src/cli.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}
