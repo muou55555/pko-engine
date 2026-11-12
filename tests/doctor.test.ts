@@ -48,3 +48,24 @@ test('doctor：FROM "" 的全库查询不算覆盖（否则孤儿判定失效）
   const report = await runDoctor(root)
   assert.equal(report.findings.some((finding) => finding.code === 'I_ORPHAN'), true)
 })
+
+test('解析：空 frontmatter 块被识别，不会导致重复块', async () => {
+  const { parseFrontmatter } = await import('../packages/core/src/schema.ts')
+  const parsed = parseFrontmatter('---\n---\n\n# 标题\n\n正文\n')
+  assert.ok(parsed !== undefined, '空 frontmatter 块应被识别')
+  assert.deepEqual(parsed.data, {})
+  assert.equal(parsed.body, '# 标题\n\n正文')
+})
+
+test('归一化：空 frontmatter 块不会产生重复 ---', async () => {
+  const { toPage, normalizePage, renderPage } = await import('../packages/core/src/vault.ts').then(async (vault) => ({
+    toPage: vault.toPage,
+    normalizePage: (await import('../packages/core/src/normalize.ts')).normalizePage,
+    renderPage: (await import('../packages/core/src/normalize.ts')).renderPage,
+  }))
+  const text = '---\n---\n\n# 标题\n\n正文\n'
+  const page = normalizePage(toPage('x.md', text), { stem: 'x' }).page
+  const rendered = renderPage(page)
+  const fences = rendered.split('\n').filter((line) => line === '---').length
+  assert.equal(fences, 2, `应只有一对 ---，实际 ${fences} 个`)
+})

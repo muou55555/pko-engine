@@ -7,7 +7,9 @@
 import type { Confidence, Tier } from './types.ts'
 import { TIERS } from './types.ts'
 
-const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
+// 用 m 标志让终止符匹配「行首的 ---」，这样空 frontmatter 块（`---\n---`）也能被识别。
+// 旧写法要求终止符前面必须有一个换行，空块因此完全不匹配，归一化时会再补一个块，造成重复。
+const FRONTMATTER = /^---[ \t]*\r?\n([\s\S]*?)^---[ \t]*(?:\r?\n|$)/m
 
 /** 解析结果：frontmatter 键值 + 正文。 */
 export interface ParsedPage {
