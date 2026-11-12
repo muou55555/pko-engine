@@ -21,6 +21,28 @@ interface Resolution {
 }
 
 /**
+ * 收集 Dataview 查询覆盖的目录前缀。
+ *
+ * 本库的 MOC 用 `FROM "20-Projects/work"` 这类查询自动列出子目录内容，
+ * 页面**不需要**被手工 wikilink 才算是"已索引"。只把非空目录当作覆盖，
+ * `FROM ""`（整库查询）不算——否则孤儿页判定会整体失效。
+ *
+ * @param pages 全部页面
+ * @returns 以 `/` 结尾的目录前缀
+ */
+function dataviewCoverage(pages: readonly WikiPage[]): string[] {
+  const prefixes = new Set<string>()
+  for (const page of pages) {
+    for (const match of page.body.matchAll(/FROM\s+"([^"]+)"/gi)) {
+      const dir = (match[1] ?? '').trim().replace(/\/+$/, '')
+      if (dir === '') continue
+      prefixes.add(`${dir}/`)
+    }
+  }
+  return [...prefixes]
+}
+
+/**
  * 审计一个 vault。
  * @param root vault 根目录的绝对路径
  * @returns 结构化报告；不修改任何文件
@@ -113,10 +135,13 @@ export async function runDoctor(root: string): Promise<DoctorReport> {
     }
   }
 
+  const coverage = dataviewCoverage(pages)
   for (const page of pages) {
     if (!ORPHAN_CATEGORIES.has(page.category)) continue
     if (page.type === 'moc' || page.type === 'wiki') continue
     if ((inlinks.get(page.path)?.size ?? 0) > 0) continue
+    // 被 MOC 的 Dataview 查询覆盖即视为已索引
+    if (coverage.some((prefix) => page.path.startsWith(prefix))) continue
     push('info', 'I_ORPHAN', page.path, '没有任何页面链接到它', '在对应 MOC 或 index.md 中加一条入口')
   }
 
