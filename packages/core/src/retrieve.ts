@@ -38,7 +38,15 @@ export interface RetrieveOptions {
   readonly maxCandidates?: number
   /** true = 关闭 L2 成本护栏，继续扫正文。 */
   readonly deep?: boolean
+  /**
+   * 页面数超过这个值才启用成本护栏。默认 500。
+   * 护栏是规模保护，不是语义规则——小库扫正文只要几十毫秒，没必要牺牲召回。
+   */
+  readonly guardThreshold?: number
 }
+
+/** 护栏默认阈值。 */
+const DEFAULT_GUARD_THRESHOLD = 500
 
 /** 元数据工件：它们是导航与日志，不是知识页，不参与检索。 */
 const EXCLUDED_PATHS: ReadonlySet<string> = new Set(['50-Wiki/index.md', '50-Wiki/log.md'])
@@ -124,7 +132,9 @@ async function indexCandidates(
     const lower = line.toLowerCase()
     if (!tokens.some((token) => lower.includes(token))) continue
     for (const target of extractLinks(line)) {
-      const page = byStem.get(stemOf(target)) ?? pages.find((candidate) => candidate.path.startsWith(target))
+      // 只接受精确路径或目录边界，避免 [[a]] 误配 articles/foo.md
+      const page = byStem.get(stemOf(target))
+        ?? pages.find((candidate) => candidate.path === `${target}.md` || candidate.path.startsWith(`${target}/`))
       if (page === undefined) continue
       hits.push({
         id: page.id,
@@ -192,7 +202,8 @@ export async function retrieve(vault: string, query: string, options: RetrieveOp
     }
   }
 
-  if (frontHit && options.deep !== true) {
+  const guardActive = options.deep !== true && pages.length > (options.guardThreshold ?? DEFAULT_GUARD_THRESHOLD)
+  if (frontHit && guardActive) {
     return { query, strategy: 'index+title+tag+summary', totalPages, candidates: rank(bucket, maxCandidates) }
   }
 

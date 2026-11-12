@@ -44,15 +44,20 @@ test('token 估算与预算裁剪', () => {
   assert.ok(estimateTokens(clipped.text) <= 140)
 })
 
-test('检索：标题命中优先，且触发成本护栏不再扫正文', async () => {
+test('检索：标题命中优先；仅当页面数超过护栏阈值才跳过正文', async () => {
   const root = await makeVault({
     '40-Resources/concepts/a.md': page('a', '分布式训练', '无关正文'),
     '40-Resources/concepts/b.md': page('b', '普通页', '这里提到分布式训练'),
   })
-  const result = await retrieve(root, '分布式')
-  assert.equal(result.candidates[0]?.id, 'a')
-  assert.equal(result.candidates[0]?.matchedBy, 'title')
-  assert.equal(result.candidates.some((candidate) => candidate.id === 'b'), false)
+  // 默认阈值 500：小库不启用护栏，正文命中照常返回
+  const normal = await retrieve(root, '分布式')
+  assert.equal(normal.candidates[0]?.id, 'a')
+  assert.equal(normal.candidates[0]?.matchedBy, 'title')
+  assert.equal(normal.candidates.some((candidate) => candidate.id === 'b'), true)
+
+  // 强制护栏：只留前置层命中
+  const guarded = await retrieve(root, '分布式', { guardThreshold: 0 })
+  assert.equal(guarded.candidates.some((candidate) => candidate.id === 'b'), false)
 })
 
 test('检索：deep 模式关闭护栏后可命中正文', async () => {
@@ -146,4 +151,26 @@ test('检索：index.md / log.md 不进检索面，无标题页用文件名兜�
   assert.equal(result.candidates.some((candidate) => candidate.path === '50-Wiki/log.md'), false)
   const untitled = result.candidates.find((candidate) => candidate.id === 'untitled')
   assert.equal(untitled?.title, 'untitled')
+})
+
+test('token 预算：裁剪后永不超限（含截断标记）', () => {
+  for (const budget of [10, 50, 100, 400]) {
+    for (const text of ['中'.repeat(5000), 'a'.repeat(5000), '中文abc混合'.repeat(300)]) {
+      const clipped = clipToTokens(text, budget)
+      assert.ok(estimateTokens(clipped.text) <= budget, `budget=${budget} 超限`)
+    }
+  }
+})
+
+test('检索：index 里的短链接不按路径前缀误配', async () => {
+  const root = await makeVault({
+    '50-Wiki/index.md': '- [[a]] — 短链接\n',
+    'articles/foo.md': page('foo', '文章', '内容'),
+  })
+  const result = await retrieve(root, '短链接', { mode: 'index-only' })
+  assert.deepEqual(result.candidates, [])
+})
+
+test('分词：纯标点不产生检索词', () => {
+  assert.deepEqual(tokenizeQuery('???'), [])
 })

@@ -36,8 +36,8 @@ export function tokenizeQuery(query: string): string[] {
     }
     for (let index = 0; index + 1 < chars.length; index += 1) tokens.push(chars[index] + chars[index + 1])
   }
-  const unique = [...new Set(tokens)]
-  return unique.length > 0 ? unique : [normalized]
+  // 纯标点查询不应退化成「拿整串去匹配」，直接判为无检索词
+  return [...new Set(tokens)]
 }
 
 /**
@@ -63,10 +63,12 @@ export function estimateTokens(text: string): number {
  */
 export function clipToTokens(text: string, maxTokens: number): { text: string; clipped: boolean } {
   if (estimateTokens(text) <= maxTokens) return { text, clipped: false }
-  // 粗剪：按字符比例回退，再逐字收敛到预算内
-  let candidate = text.slice(0, Math.max(1, Math.floor(maxTokens * 1.6)))
-  while (candidate.length > 1 && estimateTokens(candidate) > maxTokens) {
+  // 截断标记本身要占预算，否则结果会稳定超出上限
+  const suffix = '\n…（已截断）'
+  const limit = Math.max(1, maxTokens - estimateTokens(suffix))
+  let candidate = text.slice(0, Math.max(1, Math.floor(limit * 1.6)))
+  while (candidate.length > 1 && estimateTokens(candidate) > limit) {
     candidate = candidate.slice(0, Math.floor(candidate.length * 0.9))
   }
-  return { text: `${candidate.trimEnd()}\n…（已截断）`, clipped: true }
+  return { text: `${candidate.trimEnd()}${suffix}`, clipped: true }
 }
