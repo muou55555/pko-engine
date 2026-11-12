@@ -96,7 +96,8 @@ function applyExtra(page: WikiPage, extra: RawFields | undefined): WikiPage {
   const str = (key: string): string | undefined => {
     const value = extra[key]
     if (value === undefined) return undefined
-    return Array.isArray(value) ? value.join(', ') : value
+    // readonly string[] 不会被 Array.isArray 收窄掉，用 typeof 分支
+    return typeof value === 'string' ? value : value.join(', ')
   }
   const tags = extra.tags
   return {
