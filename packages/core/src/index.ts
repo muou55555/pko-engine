@@ -7,7 +7,7 @@ export type { ParsedPage } from './schema.ts'
 export { listOf, normalizeConfidence, normalizeTier, parseFrontmatter, textOf } from './schema.ts'
 export { extractLinks, normalizeTarget, stripCode } from './links.ts'
 export type { ScannedVault } from './vault.ts'
-export { IGNORED_DIRS, IGNORED_ROOT_FILES, categoryOf, scanVault, stemOf, toPage } from './vault.ts'
+export { IGNORED_DIRS, IGNORED_ROOT_FILES, META_PATHS, categoryOf, isPagePath, scanVault, stemOf, toPage } from './vault.ts'
 export { runDoctor } from './doctor.ts'
 
 export { ConflictError, LockTimeoutError, ManifestTooNewError, PkoError } from './errors.ts'

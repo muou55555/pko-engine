@@ -13,7 +13,7 @@ import { vaultPaths } from './paths.ts'
 import { checkBash, checkWrite } from './policy.ts'
 import { atomicWrite, readIfExists } from './store.ts'
 import { parseFrontmatter } from './schema.ts'
-import { toPage, stemOf } from './vault.ts'
+import { isPagePath, toPage, stemOf } from './vault.ts'
 import { existsFile, recordActivity } from './writer.ts'
 import { taskContext } from './context.ts'
 
@@ -33,6 +33,20 @@ const OK: HookOutcome = { exit: 0, stdout: '', stderr: '' }
 /** 截断到指定字符数，超出时加省略号。 */
 function clip(text: string, limit: number): string {
   return text.length <= limit ? text : `${text.slice(0, limit)}\n…（已截断）`
+}
+
+/**
+ * 工具名归一化。
+ *
+ * Claude Code 的 payload 传 `Write` / `Edit` / `MultiEdit`（首字母大写），
+ * DSH 的工具名是全小写。统一转小写后再判定，否则闸门在真实会话里静默失效。
+ *
+ * @param input 钩子 payload
+ * @returns 归一化后的工具名
+ */
+function toolNameOf(input: Record<string, unknown>): string {
+  const raw = typeof input.tool_name === 'string' ? input.tool_name.toLowerCase() : ''
+  return raw === 'multiedit' || raw === 'notebookedit' ? 'edit' : raw
 }
 
 /** 类型收窄：普通对象。 */
@@ -62,7 +76,7 @@ async function sessionStart(options: HookOptions): Promise<HookOutcome> {
 
 /** PreToolUse：校验写目标与 shell 命令。 */
 async function preTool(options: HookOptions, input: Record<string, unknown>): Promise<HookOutcome> {
-  const tool = typeof input.tool_name === 'string' ? input.tool_name : ''
+  const tool = toolNameOf(input)
   const args = isRecord(input.tool_input) ? input.tool_input : {}
 
   if (tool === 'write' || tool === 'edit') {
@@ -85,13 +99,16 @@ async function preTool(options: HookOptions, input: Record<string, unknown>): Pr
 
 /** PostToolUse：把裸写落地的文件归一化。 */
 async function postTool(options: HookOptions, input: Record<string, unknown>): Promise<HookOutcome> {
-  const tool = typeof input.tool_name === 'string' ? input.tool_name : ''
+  const tool = toolNameOf(input)
   if (tool !== 'write' && tool !== 'edit') return OK
   const args = isRecord(input.tool_input) ? input.tool_input : {}
   const file = typeof args.file_path === 'string' ? args.file_path : ''
   if (file === '') return OK
   const rel = toRel(options.vault, file)
   if (rel === undefined) return OK
+  // 只归一化知识页：log.md 是 append-only、hot.md 是人工缓存、非 .md 可能是二进制，
+  // 给它们加 frontmatter 会破坏内容
+  if (!isPagePath(rel)) return OK
 
   const abs = resolve(options.vault, rel)
   const now = options.now ?? new Date()

@@ -8,6 +8,13 @@ import { extractLinks } from './links.ts'
 /** 不参与扫描的目录。点号开头的一律跳过，无需列出。 */
 export const IGNORED_DIRS: readonly string[] = ['_templates', '_attachments', 'node_modules']
 
+/** 元数据工件：导航目录、操作日志、上下文缓存。它们是派生/人工维护的，不是知识页。 */
+export const META_PATHS: ReadonlySet<string> = new Set([
+  '50-Wiki/index.md',
+  '50-Wiki/log.md',
+  '50-Wiki/hot.md',
+])
+
 /**
  * 不参与页面审计的根级文件。
  *
@@ -33,6 +40,26 @@ const CATEGORY_RULES: ReadonlyArray<readonly [string, string]> = [
   ['00-Inbox/', 'inbox'],
   ['brain/', 'memory'],
 ]
+
+/**
+ * 判断一个路径是否是可归一化的知识页。
+ *
+ * 非 `.md`、元数据工件、根级运维文档、被忽略目录下的文件都不算。
+ * hook 的自动归一化与检索面都走这一个判定，避免两处各写一套规则。
+ *
+ * @param relPath vault 内相对路径
+ * @returns 是否按知识页对待
+ */
+export function isPagePath(relPath: string): boolean {
+  const rel = relPath.replace(/\\/g, '/').replace(/^\.\//, '')
+  if (!rel.endsWith('.md')) return false
+  if (META_PATHS.has(rel)) return false
+  if (IGNORED_ROOT_FILES.includes(rel)) return false
+  const segments = rel.split('/')
+  const head = segments[0]
+  if (segments.length > 1 && head !== undefined && IGNORED_DIRS.includes(head)) return false
+  return true
+}
 
 /**
  * 由相对路径派生检索分类。

@@ -9,7 +9,7 @@ import { readIfExists } from './store.ts'
 import { tokenizeQuery } from './tokens.ts'
 import { extractLinks } from './links.ts'
 import type { WikiPage } from './types.ts'
-import { scanVault, stemOf } from './vault.ts'
+import { isPagePath, scanVault, stemOf } from './vault.ts'
 import { vaultPaths } from './paths.ts'
 
 /** 命中来源。 */
@@ -47,9 +47,6 @@ export interface RetrieveOptions {
 
 /** 护栏默认阈值。 */
 const DEFAULT_GUARD_THRESHOLD = 500
-
-/** 元数据工件：它们是导航与日志，不是知识页，不参与检索。 */
-const EXCLUDED_PATHS: ReadonlySet<string> = new Set(['50-Wiki/index.md', '50-Wiki/log.md'])
 
 /** 各层的基准分。 */
 const BASE = { titleExact: 10, title: 6, tag: 4, summary: 2, body: 3, graph: 1, index: 5 } as const
@@ -162,7 +159,7 @@ export async function retrieve(vault: string, query: string, options: RetrieveOp
   const maxCandidates = options.maxCandidates ?? 10
   const tokens = tokenizeQuery(query)
   const scanned = await scanVault(vault)
-  const pages = scanned.pages.filter((page) => !EXCLUDED_PATHS.has(page.path))
+  const pages = scanned.pages.filter((page) => isPagePath(page.path))
   const totalPages = pages.length
 
   if (tokens.length === 0) {
