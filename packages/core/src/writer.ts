@@ -153,12 +153,19 @@ export async function writePage(input: WritePageInput): Promise<WritePageResult>
       : { ...toPage(rel, existing), body: input.body }
 
     const withExtra = applyExtra(base, input.extra)
-    const { page, changed } = normalizePage(withExtra, { stem, now })
+    const { page: normalized, changed } = normalizePage(withExtra, { stem, now })
     const preserved: RawFields = { ...extraFields(parsed?.data), ...extraFields(input.extra) }
-    const text = renderPage(page, preserved)
+    let page = normalized
+    let text = renderPage(page, preserved)
 
-    if (existing !== undefined && sha256(existing) === sha256(text)) {
-      return { relPath: rel, id: page.id, changed: false, skipped: true, filled: [] }
+    if (existing !== undefined) {
+      if (sha256(existing) === sha256(text)) {
+        return { relPath: rel, id: page.id, changed: false, skipped: true, filled: [] }
+      }
+      // 内容确实变了才刷新 updated。归一化（normalize 子命令）只补缺失字段，
+      // 不改既有时间戳——那是对元数据的修复，不是内容更新。
+      page = { ...page, updated: now.toISOString() }
+      text = renderPage(page, preserved)
     }
 
     await atomicWrite(target, text)

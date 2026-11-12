@@ -14,7 +14,7 @@ import { checkBash, checkWrite } from './policy.ts'
 import { atomicWrite, readIfExists } from './store.ts'
 import { parseFrontmatter } from './schema.ts'
 import { toPage, stemOf } from './vault.ts'
-import { recordActivity } from './writer.ts'
+import { existsFile, recordActivity } from './writer.ts'
 
 export interface HookOutcome {
   readonly exit: number
@@ -47,16 +47,6 @@ function toRel(vault: string, file: string): string | undefined {
   return rel.split(sep).join('/')
 }
 
-/** 文件是否存在。 */
-async function exists(path: string): Promise<boolean> {
-  try {
-    await stat(path)
-    return true
-  } catch {
-    return false
-  }
-}
-
 /** SessionStart：注入 hot.md 与 north-star。 */
 async function sessionStart(options: HookOptions): Promise<HookOutcome> {
   const paths = vaultPaths(options.vault)
@@ -79,7 +69,7 @@ async function preTool(options: HookOptions, input: Record<string, unknown>): Pr
     if (file === '') return OK
     const rel = toRel(options.vault, file)
     if (rel === undefined) return OK
-    const verdict = checkWrite({ relPath: rel, tool, exists: await exists(resolve(options.vault, rel)) })
+    const verdict = checkWrite({ relPath: rel, tool, exists: await existsFile(resolve(options.vault, rel)) })
     if (!verdict.allow) return { exit: 2, stdout: '', stderr: `${verdict.reason}\n${verdict.suggestion}\n` }
     return OK
   }

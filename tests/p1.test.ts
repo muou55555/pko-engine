@@ -148,3 +148,33 @@ test('hook PostToolUse 为裸写文件补齐 frontmatter', async () => {
   assert.match(fixed, /^---\n/)
   assert.match(fixed, /type: note/)
 })
+
+test('writePage：内容变化时刷新 updated，created 与 id 保持稳定', async () => {
+  const root = await makeVault()
+  const rel = '40-Resources/concepts/x.md'
+  await writePage({ vault: root, relPath: rel, body: '# X\n\nv1', now: new Date('2026-01-01T00:00:00Z') })
+  const first = await readFile(join(root, rel), 'utf8')
+  await writePage({ vault: root, relPath: rel, body: '# X\n\nv2', now: new Date('2026-02-02T00:00:00Z') })
+  const second = await readFile(join(root, rel), 'utf8')
+  assert.match(first, /updated: 2026-01-01T00:00:00\.000Z/)
+  assert.match(second, /updated: 2026-02-02T00:00:00\.000Z/)
+  assert.match(second, /created: 2026-01-01T00:00:00\.000Z/)
+  assert.match(second, /id: x/)
+})
+
+test('writePage：提供 sourceKey 与 contentHash 时写入 manifest', async () => {
+  const root = await makeVault()
+  await writePage({
+    vault: root,
+    relPath: '40-Resources/concepts/m.md',
+    body: '# M\n\n内容',
+    sourceKey: 'https://example.com/a',
+    contentHash: 'sha256:abc',
+  })
+  const raw = await readFile(join(root, '.pko/manifest.json'), 'utf8')
+  const manifest = JSON.parse(raw) as { version: number; sources: Record<string, { hash: string; pages: string[]; producedBy: string }> }
+  assert.equal(manifest.version, 1)
+  assert.equal(manifest.sources['https://example.com/a']?.hash, 'sha256:abc')
+  assert.deepEqual(manifest.sources['https://example.com/a']?.pages, ['m'])
+  assert.match(manifest.sources['https://example.com/a']?.producedBy ?? '', /^@pko\/core@/)
+})
