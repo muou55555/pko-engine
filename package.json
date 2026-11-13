@@ -20,7 +20,8 @@
     "bundle:skills": "node scripts/bundle-skills.mjs",
     "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p packages/dsh/tsconfig.json --noEmit",
     "build": "npm run build:dsh && npm run typecheck",
-    "test:all": "npm test && npm run hygiene && npm run typecheck"
+    "test:all": "npm test && npm run hygiene && npm run typecheck",
+    "pack:dsh": "node scripts/pack-plugin.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -36,6 +36,11 @@
     }
   },
   "scripts": {
+    "prepare": "tsc -p tsconfig.json && node ../../scripts/bundle-skills.mjs",
     "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
 }
