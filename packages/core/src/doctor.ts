@@ -2,7 +2,7 @@
 import type { DoctorReport, Finding, Severity, WikiPage } from './types.ts'
 import { PAGE_TYPES, STATUSES } from './types.ts'
 import { normalizeTarget } from './links.ts'
-import { scanVault, stemOf } from './vault.ts'
+import { META_PATHS, scanVault, stemOf } from './vault.ts'
 
 /** 需要 summary 的知识类分类（L2b 检索层依赖它）。 */
 const KNOWLEDGE_CATEGORIES: ReadonlySet<string> = new Set([
@@ -139,6 +139,8 @@ export async function runDoctor(root: string): Promise<DoctorReport> {
   for (const page of pages) {
     if (!ORPHAN_CATEGORIES.has(page.category)) continue
     if (page.type === 'moc' || page.type === 'wiki') continue
+    // 索引 / 日志 / 上下文缓存是基础设施，不要求被别的页面链接
+    if (META_PATHS.has(page.path)) continue
     if ((inlinks.get(page.path)?.size ?? 0) > 0) continue
     // 被 MOC 的 Dataview 查询覆盖即视为已索引
     if (coverage.some((prefix) => page.path.startsWith(prefix))) continue

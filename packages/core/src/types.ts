@@ -9,6 +9,8 @@
 export const PAGE_TYPES = [
   'daily', 'weekly', 'monthly', 'project', 'card', 'wiki',
   'meeting', 'article', 'clip', 'moc', 'note',
+  // 真实库里常见的功能型页面：操作指南、参考资料、元数据页
+  'how-to', 'reference', 'meta',
 ] as const
 
 export type PageType = (typeof PAGE_TYPES)[number]

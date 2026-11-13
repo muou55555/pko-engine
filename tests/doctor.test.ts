@@ -69,3 +69,23 @@ test('归一化：空 frontmatter 块不会产生重复 ---', async () => {
   const fences = rendered.split('\n').filter((line) => line === '---').length
   assert.equal(fences, 2, `应只有一对 ---，实际 ${fences} 个`)
 })
+
+
+test('doctor：功能型页面类型（how-to / meta / reference）不报未知类型', async () => {
+  const root = await makeVault({
+    '40-Resources/how-to/a.md': page('a', '指南', { type: 'how-to' }),
+    '50-Wiki/hot.md': page('hot', '缓存', { type: 'meta' }),
+    '40-Resources/references/b.md': page('b', '参考', { type: 'reference' }),
+  })
+  const report = await runDoctor(root)
+  assert.equal(report.findings.some((finding) => finding.code === 'W_UNKNOWN_TYPE'), false)
+})
+
+test('doctor：元数据文件（index/log/hot）不参与孤儿判定', async () => {
+  const root = await makeVault({
+    '50-Wiki/hot.md': page('hot', '缓存', { type: 'meta' }),
+    '50-Wiki/log.md': page('log', '日志', { type: 'meta' }),
+  })
+  const report = await runDoctor(root)
+  assert.equal(report.findings.some((finding) => finding.code === 'I_ORPHAN'), false)
+})

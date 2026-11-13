@@ -45,6 +45,12 @@ dsh --version
 
 已经有 Obsidian 库就直接用，不需要改目录结构。
 
+还没有库？复制示例库即可：
+
+```sh
+cp -R examples/minimal-vault ~/my-pko-vault
+```
+
 ---
 
 ## 三、安装（三种方式，选一个）
