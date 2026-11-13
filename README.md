@@ -68,6 +68,7 @@ dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#pa
 - **[使用手册](docs/USAGE.md)** —— 技能、工具、工作流、写入规则
 - **[开发文档](docs/DEVELOPMENT.md)** —— 源码调试、开发循环、事件观测
 - **[架构文档](docs/ARCHITECTURE.md)** —— 分层、数据契约、写入协议、设计取舍
+- **[一致性核验](docs/CONFORMANCE.md)** —— 与 pko-vault 的目录、命令、约定对照
 
 ## 常用命令
 

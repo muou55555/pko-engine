@@ -10,6 +10,7 @@ import { PkoError } from './errors.ts'
 import { isGitRepo } from './checkpoint.ts'
 import { runDoctor } from './doctor.ts'
 import { scanVault } from './vault.ts'
+import { MOC_SEEDS, TEMPLATE_FILES } from './templates.ts'
 
 /** 标准目录（初始化时按顺序创建）。 */
 export const STANDARD_DIRS: readonly string[] = [
@@ -48,56 +49,92 @@ export const STANDARD_DIRS: readonly string[] = [
   '80-Cards',
   '90-Archive',
   '_attachments',
+  '_attachments/images',
+  '_attachments/images/canvas',
+  '_attachments/pdfs',
+  '_attachments/pdfs/canvas',
   '_templates',
   'brain',
   '.raw',
 ]
 
 /** 种子文件：只在缺失时写入。 */
-export const SEED_FILES: Readonly<Record<string, string>> = {
+const CORE_SEEDS: Readonly<Record<string, string>> = {
   'AGENTS.md': `# 知识库操作手册
 
-> 每个会话开始时读这一份。它说明这个库怎么组织、怎么写入、有哪些禁区。
+> 每次会话开始时读这一份。它说明这个库怎么组织、怎么写入、有哪些禁区。
 
-## 目录
+## 目录结构
 
 \`\`\`
-00-Inbox/      新内容第一落点，每日清空
-10-Atlas/      MOC 导航层
-20-Projects/   有截止日期的项目（work / personal）
-30-Areas/      长期维护的领域（work / life）
-40-Resources/  知识资源（concepts / how-to / references / clips）
-50-Wiki/       结构化知识库：index.md / hot.md / log.md
-60-Outputs/    产出物（文章 / 周报 / 演示 / 画布）
-70-Calendar/   日记 / 周记 / 月记
-80-Cards/      Zettelkasten 永久笔记
-90-Archive/    归档（不删除，只归档）
-brain/         记忆层（north-star / about-me / key-decisions / patterns / memories）
+00-Inbox/          所有新内容第一落点，每日清空
+10-Atlas/          MOC 导航层（HOME + moc-<领域>.md）
+20-Projects/       有截止日期的项目（work/ personal/）
+30-Areas/          持续维护的领域
+  life/            community/ fitness/ travel/ smart-home/ daily-life/
+  work/            company/ llm/ quant/ tech-share/
+40-Resources/      知识资源库（原子笔记）
+  concepts/        概念解释
+  how-to/          操作指南
+  references/      参考资料
+  clips/           摘录片段
+50-Wiki/           结构化 Wiki（index.md / log.md / hot.md）
+60-Outputs/        产出物（articles/ canvases/ presentations/ weekly-reports/）
+70-Calendar/       日记 / 周记 / 月记（daily/ weekly/ monthly/）
+80-Cards/          Zettelkasten 永久笔记（编号 YYMMDDHHmm）
+90-Archive/        归档（不删除，只归档）
+brain/             记忆层（north-star / about-me / key-decisions / patterns / memories）
+_templates/        Obsidian 模板
+_attachments/      附件（images/ pdfs/，画布素材在各自 canvas/ 下）
+.raw/              原始文件存档，摄取后不可修改
 \`\`\`
 
-## 每次会话的开始
+## 每次会话必须执行的初始化
 
-1. 读 \`50-Wiki/hot.md\` —— 近期上下文
-2. 读 \`brain/north-star.md\` —— 当前目标
-3. 列出 \`00-Inbox/\` —— 待处理内容
+1. 读 \`brain/north-star.md\` —— 当前目标与优先级
+2. 读 \`brain/memories.md\` —— 关键记忆索引
+3. 读 \`50-Wiki/hot.md\` —— 近期上下文
+4. 列出 \`00-Inbox/\` —— 待处理内容
+5. 列出 \`20-Projects/work/\` —— 活跃项目
 
-## 写入规范
+## 文件命名规范
 
-- 所有笔记必须有 frontmatter：\`date / type / tags\`（项目类加 \`status\`）
-- 新内容先落 \`00-Inbox/\`，整理后再进 PARA
-- 知识页优先写进 \`40-Resources/concepts/\` 或 \`50-Wiki/\`
-- 在 \`40-Resources/concepts/\` 新建笔记后，同步在对应 \`10-Atlas/moc-*.md\` 加一行链接
+| 类型 | 格式 | 示例 |
+| --- | --- | --- |
+| 日记 | \`YYYY-MM-DD.md\` | \`2026-05-17.md\` |
+| 周记 | \`YYYY-WNN.md\` | \`2026-W20.md\` |
+| 月记 | \`YYYY-MM.md\` | \`2026-05.md\` |
+| 项目 | \`[项目名].md\` | \`llm-agent-research.md\` |
+| 知识卡片 | \`[YYMMDDHHmm]-[标题].md\` | \`2605171430-transformer-attention.md\` |
+| Wiki 页面 | \`[主题].md\` | \`obsidian-workflow.md\` |
+| MOC | \`moc-[领域].md\` | \`moc-llm.md\` |
+| 会议 | \`[YYYY-MM-DD]-[主题].md\` | \`2026-05-17-llm-team-sync.md\` |
+
+## 写入路由
+
+| 内容 | 目标 |
+| --- | --- |
+| 新技术资料 | 原始存 \`.raw/YYYY-MM-DD-<标题>.md\`，蒸馏页进 \`50-Wiki/<主题>.md\` |
+| 技术方案 / 操作步骤 | \`40-Resources/how-to/\` |
+| 概念 / 原理 | \`40-Resources/concepts/\` + \`80-Cards/\` |
+| 工作决策 | \`20-Projects/work/<项目>/\` |
+| LLM / AI | \`30-Areas/work/llm/\` |
+| 量化 | \`30-Areas/work/quant/\` |
+| 生活类 | \`30-Areas/life/<子目录>/\` |
+
+新材料一律先落 \`00-Inbox/\`，摄取完成后原始件归档进 \`.raw/\`。
 
 ## 安全规则
 
 - **永不删除文件**，只归档到 \`90-Archive/\`
-- \`.raw/\` 中的原始材料摄取后不可修改
+- \`.raw/\` 中的原始材料摄取后不可修改（可以写新文件，不能改旧的）
 - \`50-Wiki/log.md\` 只追加，禁止整体覆写
 - 不静默覆盖：发现矛盾内容用 \`> ⚠️ 待确认：…\` 标注
+- 写 \`[[链接]]\` 前先确认目标文件存在，不写死链
 
 ## 检索顺序
 
-\`50-Wiki/hot.md\` → \`10-Atlas/HOME.md\` → 对应 \`moc-*.md\` → 具体文件
+\`50-Wiki/hot.md\` → \`50-Wiki/index.md\` → \`10-Atlas/HOME.md\` → 对应 \`moc-*.md\` → 具体文件
 `,
 
   'purpose.md': `---
@@ -148,57 +185,6 @@ updated: 2026-01-01
 ## 状态
 
 [[50-Wiki/index]] · [[50-Wiki/hot]] · [[50-Wiki/log]]
-`,
-
-  '10-Atlas/moc-work.md': `---
-id: moc-work
-title: 工作总览 MOC
-type: moc
-tags: [moc, work]
-summary: 工作领域导航：项目、领域、周报
-tier: supporting
-created: 2026-01-01
-updated: 2026-01-01
----
-
-# 💼 工作总览
-
-[[10-Atlas/HOME|← HOME]]
-
-## 活跃项目
-
-- （在 20-Projects/work/ 新建项目后，在这里加一行链接）
-
-## 工作领域
-
-- 公司日常
-- 大模型 / AI
-- 量化金融
-- 科技分享
-`,
-
-  '10-Atlas/moc-life.md': `---
-id: moc-life
-title: 生活总览 MOC
-type: moc
-tags: [moc, life]
-summary: 生活领域导航：小区、健身、旅游、智能家居
-tier: supporting
-created: 2026-01-01
-updated: 2026-01-01
----
-
-# 🌱 生活总览
-
-[[10-Atlas/HOME|← HOME]]
-
-## 领域
-
-- 小区建设
-- 运动健身
-- 旅游
-- 智能家居
-- 日常生活
 `,
 
   '50-Wiki/index.md': `---
@@ -378,6 +364,9 @@ updated: 2026-01-01
 ## 待追踪的事项
 `,
 }
+
+/** 全部种子文件：核心页 + MOC 导航 + Obsidian 模板。 */
+export const SEED_FILES: Readonly<Record<string, string>> = { ...CORE_SEEDS, ...MOC_SEEDS, ...TEMPLATE_FILES }
 
 export interface ScaffoldPlan {
   readonly root: string

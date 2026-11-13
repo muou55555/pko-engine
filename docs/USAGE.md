@@ -24,16 +24,16 @@
 
 输入 `/` 会看到这些命令。它们各自是一段固定的工作流程。
 
-| 命令 | 做什么 | 什么时候用 |
-| --- | --- | --- |
-| `/pko-daily` | 恢复上下文 + 列今日待办 + 提醒 Inbox | 每天开工 |
-| `/pko-ingest` | 摄取外部资料：抓取 → 蒸馏 → 查重 → 入库 → 报告 | 看到好文章/论文 |
-| `/pko-save` | 把当前会话里有价值的内容沉淀进库 | 聊出结论后 |
-| `/pko-query` | 基于知识库回答，带来源引用 | 想查自己的积累 |
-| `/pko-weekly` | 生成本周周报（对外版 + 个人版） | 周五/周日 |
-| `/pko-moc` | MOC 与健康检查：孤儿页、断链、缺字段 | 每周一次 |
-| `/pko-wrap-up` | 会话收尾：重写 hot.md、追加日记 | 收工前 |
-| `/pko-canvas` | 在 Obsidian Canvas 上建可视化知识板 | 整理关系时 |
+| 命令 | 对应 pko-vault 命令 | 做什么 | 什么时候用 |
+| --- | --- | --- | --- |
+| `/pko-daily` | `/daily-start` | 读 north-star 与 hot、准备今日日记、列待办与 Inbox、给 3 条建议 | 每天开工 |
+| `/pko-ingest` | `/ingest` | 取来源（或处理 Inbox）→ 原件存 `.raw/` → 蒸馏成页 → 更新索引与 MOC | 看到好文章/论文 |
+| `/pko-save` | `/save` | 按内容类型路由到固定目录 → 更新 MOC → 追加今日日记 | 聊出结论后 |
+| `/pko-query` | `/wiki-query` | hot → index → HOME → MOC → 具体页，带来源回答 | 想查自己的积累 |
+| `/pko-weekly` | `/weekly-digest` | 生成本周周报（对外版 + 个人版），归档到产出与日历 | 周五/周日 |
+| `/pko-moc` | `/moc-update` | 孤立笔记、MOC 死链、近 7 天归档建议、覆盖率 | 每周一次 |
+| `/pko-wrap-up` | `/wrap-up` | 追加日记、重写 hot.md、更新 brain 记忆层 | 收工前 |
+| `/pko-canvas` | `/canvas` | 在 Obsidian Canvas 上建可视化知识板 | 整理关系时 |
 
 ### 例子
 
@@ -54,7 +54,33 @@
 
 ---
 
-## 三、10 个工具（模型自动调用）
+## 三、材料怎么进库（与 pko-vault 一致）
+
+```
+新材料 → 00-Inbox/（第一落点）
+   ↓ /pko-ingest
+原件 → .raw/YYYY-MM-DD-<标题>.md（一字不改，此后不可修改）
+蒸馏页 → 50-Wiki/<主题>.md 或 40-Resources/...
+索引 → 50-Wiki/index.md 与 10-Atlas/moc-*.md 加链接
+日志 → 50-Wiki/log.md 自动追加
+```
+
+写入路由（`/pko-save` 与 `/pko-ingest` 共用）：
+
+| 内容 | 目标目录 |
+| --- | --- |
+| 技术方案 / 操作步骤 | `40-Resources/how-to/` |
+| 概念 / 原理 | `40-Resources/concepts/` + `80-Cards/` |
+| 工作决策 | `20-Projects/work/<项目>/` |
+| LLM / AI | `30-Areas/work/llm/` |
+| 量化 | `30-Areas/work/quant/` |
+| 生活类 | `30-Areas/life/<子目录>/` |
+| 日记 | `70-Calendar/daily/YYYY-MM-DD.md` |
+| 周报 | `60-Outputs/weekly-reports/YYYY-WNN.md` + `70-Calendar/weekly/` |
+
+目录的完整对照见 **[一致性核验](CONFORMANCE.md)**。
+
+## 四、10 个工具（模型自动调用）
 
 | 工具 | 作用 |
 | --- | --- |
@@ -114,7 +140,7 @@ node packages/core/src/cli.ts init --vault ~/my-pko-vault
 
 ---
 
-## 四、典型工作流
+## 五、典型工作流
 
 ### 每日开工
 
@@ -169,7 +195,7 @@ node packages/core/src/cli.ts restore 20261113-015335 --vault ~/你的库
 
 ---
 
-## 五、写入规则（会自动执行）
+## 六、写入规则（会自动执行）
 
 | 规则 | 执行方式 |
 | --- | --- |
@@ -183,7 +209,7 @@ node packages/core/src/cli.ts restore 20261113-015335 --vault ~/你的库
 
 ---
 
-## 六、上下文是怎么注入的
+## 七、上下文是怎么注入的
 
 三档，预算逐级放大：
 
@@ -199,7 +225,7 @@ node packages/core/src/cli.ts restore 20261113-015335 --vault ~/你的库
 
 ---
 
-## 七、命令行参考
+## 八、命令行参考
 
 不装 DSH 也能用核心能力：
 
@@ -218,7 +244,7 @@ node packages/core/src/cli.ts hook --vault <库>     # 从 stdin 读宿主事件
 
 ---
 
-## 八、和 Obsidian 的分工
+## 九、和 Obsidian 的分工
 
 | 用 Obsidian | 用 DSH |
 | --- | --- |
@@ -230,7 +256,7 @@ node packages/core/src/cli.ts hook --vault <库>     # 从 stdin 读宿主事件
 
 ---
 
-## 九、常见问题
+## 十、常见问题
 
 **Q：模型说"不在任何 PKO vault 内"？**
 A：会话工作目录不在库内。在库根目录开会话，或配置 `vault: /绝对路径`。

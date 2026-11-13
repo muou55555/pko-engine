@@ -82,7 +82,7 @@ export async function runDoctor(root) {
         }
         const stem = stemOf(page.path);
         if (page.id !== stem) {
-            push('warn', 'W_ID_MISMATCH', page.path, `frontmatter id "${page.id}" 与文件名 "${stem}" 不一致`, '统一二者，或确认这是有意为之');
+            push('info', 'I_ID_MISMATCH', page.path, `frontmatter id "${page.id}" 与文件名 "${stem}" 不一致（不影响按路径检索）`, '若要用 [[id]] 链接，请统一二者；否则可以忽略');
         }
     }
     const byPath = new Map();

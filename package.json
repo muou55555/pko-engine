@@ -1,6 +1,6 @@
 {
   "name": "pko-engine",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "type": "module",
   "description": "Framework-agnostic PKO knowledge engine (core + DeepSeek Harness adapter + skills)",

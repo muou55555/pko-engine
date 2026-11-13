@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, writeFile, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { checkWrite } from '../packages/core/src/policy.ts'
 import { clipToTokens, estimateTokens, tokenizeQuery } from '../packages/core/src/tokens.ts'
 import { retrieve } from '../packages/core/src/retrieve.ts'
 import { bodyContext, sessionContext, taskContext } from '../packages/core/src/context.ts'
@@ -173,4 +174,16 @@ test('检索：index 里的短链接不按路径前缀误配', async () => {
 
 test('分词：纯标点不产生检索词', () => {
   assert.deepEqual(tokenizeQuery('???'), [])
+})
+
+
+test('治理：.raw 允许新建原始材料，但拒绝修改已有文件', () => {
+  // 参考库的摄取流程要把原件写进 .raw/，这是新建，必须放行
+  assert.equal(checkWrite({ relPath: '.raw/2026-11-13-demo.md', tool: 'write', exists: false }).allow, true)
+  // 已存在则不可覆盖
+  const overwrite = checkWrite({ relPath: '.raw/2026-11-13-demo.md', tool: 'write', exists: true })
+  assert.equal(overwrite.allow, false)
+  // 任何编辑都拒绝
+  const edit = checkWrite({ relPath: '.raw/2026-11-13-demo.md', tool: 'edit', exists: true })
+  assert.equal(edit.allow, false)
 })

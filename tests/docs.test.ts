@@ -27,7 +27,7 @@ test('文档：CLI 用法里列出全部已实现的子命令', async () => {
 
 test('文档：README 与手册引用的 npm 脚本都存在', async () => {
   const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')) as { scripts: Record<string, string> }
-  const docs = ['README.md', 'docs/INSTALL.md', 'docs/USAGE.md', 'docs/DEVELOPMENT.md', 'docs/ARCHITECTURE.md']
+  const docs = ['README.md', 'docs/INSTALL.md', 'docs/USAGE.md', 'docs/DEVELOPMENT.md', 'docs/ARCHITECTURE.md', 'docs/CONFORMANCE.md']
   for (const doc of docs) {
     let text = ''
     try {
@@ -49,7 +49,7 @@ test('文档：README 与手册引用的 npm 脚本都存在', async () => {
 
 
 test('文档：站内相对链接都能解析到真实文件', async () => {
-  const docs = ['README.md', 'docs/INSTALL.md', 'docs/USAGE.md', 'docs/DEVELOPMENT.md', 'docs/ARCHITECTURE.md']
+  const docs = ['README.md', 'docs/INSTALL.md', 'docs/USAGE.md', 'docs/DEVELOPMENT.md', 'docs/ARCHITECTURE.md', 'docs/CONFORMANCE.md']
   for (const doc of docs) {
     const text = await readFile(join(ROOT, doc), 'utf8')
     for (const match of text.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
