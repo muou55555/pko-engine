@@ -1,0 +1,6 @@
+# @pko/dsh 的 bundle 层：向宿主插入一行插件。
+- insert:
+    - id: pko-engine
+      name: '@pko/dsh'
+      config:
+        vault: null

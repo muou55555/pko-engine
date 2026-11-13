@@ -1,0 +1,35 @@
+/** 按会话目录解析 vault：不缓存全局状态，避免跨工作区串库。 */
+import { existsSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+
+const MARKERS = ['.pko', join('50-Wiki', 'index.md')]
+
+/**
+ * 从某个目录向上找最近的 PKO vault 根。
+ * @param from 起始目录（会话 cwd）
+ * @returns vault 根绝对路径；找不到返回 undefined
+ */
+export function nearestVault(from: string): string | undefined {
+  let current = resolve(from)
+  for (let depth = 0; depth < 12; depth += 1) {
+    if (MARKERS.some((marker) => existsSync(join(current, marker)))) return current
+    const parent = dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+  return undefined
+}
+
+/**
+ * 解析本次调用应当使用的 vault。
+ * @param configured 配置里的固定路径
+ * @param cwd 会话当前目录
+ * @returns vault 根或 undefined
+ */
+export function resolveVault(configured: string | undefined, cwd: string): string | undefined {
+  if (configured !== undefined) {
+    const fixed = resolve(configured)
+    return existsSync(fixed) ? fixed : undefined
+  }
+  return nearestVault(cwd)
+}
