@@ -1,39 +1,51 @@
 # 真实 DSH 会话 E2E
 
-## 它验证什么
+验证 `@pko/dsh` 插件在**真实 agent 会话**里的行为，而不是"函数被调用时正确"。
 
-不是"插件能加载"，而是**钩子在真实 agent 会话里按顺序生效**：
+## 它怎么跑
 
-| # | 断言 | 证据来源 | 为什么可信 |
-|---|---|---|---|
-| 1 | `SessionStart` 注入库上下文 | 事件流含 `[知识库] 本工作区有 PKO vault` | 该文本只由我们的 hook 产出 |
-| 2 | `UserPromptSubmit` 注入相关页 | 事件流含 `[知识库提示]` 与 `cache-penetration` | 同上 |
-| 3 | 正常写入被放行 | `00-Inbox/session-note.md` 存在 | 文件系统事实 |
-| 4 | `PostToolUse` 自动补齐 frontmatter | 文件出现 `type: note` / `created:` | 提示词明确要求模型**不写** frontmatter，所以出现只可能来自 hook |
-| 5 | `Stop` 提示更新 hot.md | 事件流含提醒文本 | 只由我们的 hook 产出 |
-| 6 | `PreToolUse` 阻止覆盖 `.raw` | 文件字节级未变 | 文件系统事实 |
-| 7 | 拒绝原因回到会话 | 事件流含拒绝文案 | 同上 |
+1. 建一个夹具 vault（含 hot.md、索引、一页知识、受保护的 `.raw/`，并 `git init`）
+2. 建一次性 profile `pko-e2e-<pid>`（从 headless 模板）
+3. `dsh plugin --profile <profile> add link:<repo>/packages/dsh`
+4. 用 `--json` 跑 4 次会话，解析事件流
+5. 结束后删除 profile
 
-**不断言模型说了什么**——LLM 输出不确定；断言的是注入痕迹与文件系统副作用。
+## 9 条断言
+
+| # | 断言 | 证据 |
+| --- | --- | --- |
+| 1 | 插件被加载 | 启动 stderr 无 `did not activate` |
+| 2 | agent 调用了 `pko_query` | 事件流 `tool_call.tool` |
+| 3 | 会话开始投放了技能 | `<vault>/.dsh/skills/pko-query/SKILL.md` 存在 |
+| 4 | 会话注入进入模型上下文 | 模型复述出 `hot.md` 里的原文 |
+| 5 | 调用了 `pko_capture` 与 `pko_checkpoint` | 事件流 `tool_call` |
+| 6 | 写入落盘且带完整 frontmatter | `00-Inbox/<标题>.md` 含 `type: note` / `created:` |
+| 7 | 创建了 git 还原点 | `git for-each-ref refs/pko/ckpt` 非空 |
+| 8 | `.raw` 未被改写 | 文件字节级未变 |
+| 9 | 拒绝原因回到会话 | 事件流含 `.raw/` 或 `PKO 规则` |
+
+不断言模型措辞——LLM 输出不确定；断言注入痕迹与文件系统事实。
 
 ## 前置条件
 
-1. `dsh` CLI 可用（`dsh --version`）
-2. headless profile 能访问模型：需要 `DEEPSEEK_API_KEY`，
-   或改用已登录的 web profile（需重启 DSH）
+`dsh` CLI + 可用的模型路由。headless 默认只带 `llm-deepseek-account`，
+缺少凭据层与 account 服务，E2E 的 overlay 会补三行：
 
-缺少认证时脚本以 **exit 2 + `BLOCKED:`** 退出，不当作测试失败。
+```yaml
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+- id: authorization
+  name: '@deepseek-ai/dsh-authorization'
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+```
+
+补上后 headless 可用 web 端已登录的账号路由（实测有效）。
+
+缺认证时脚本以 **exit 2 + `BLOCKED:`** 退出，不当作失败。
 
 ## 运行
 
 ```sh
-node tests/e2e/dsh-session.mjs
-# 或
 npm run test:e2e
 ```
-
-## 为什么不用 Claude Code 跑
-
-本项目以 DSH 为目标宿主。CC 侧的 `settings.json` 是兼容层，DSH 的
-`dsh-hooks-claude-code` 才是主路径；两者 payload 形状一致（bridge 会把 DSH 事件
-翻译成 CC 钩子格式），所以这一个脚本同时覆盖两条路的契约。

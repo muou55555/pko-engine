@@ -10,7 +10,7 @@
  * 需要：dsh CLI + 可用模型路由。缺认证时以 BLOCKED 退出（exit 2），不算失败。
  */
 import { spawnSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,6 +41,11 @@ async function prepare(dir) {
   await writeFile(join(vault, '50-Wiki/index.md'), '---\nid: index\ntitle: 索引\ntype: wiki\ntier: supporting\ntags: [meta]\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 索引\n\n- [[cache]] — 缓存穿透\n')
   await writeFile(join(vault, '40-Resources/cache.md'), '---\nid: cache\ntitle: 缓存穿透\ntype: note\ntier: core\ntags: [cache]\nsummary: 布隆过滤器与空值缓存\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 缓存穿透\n\n布隆过滤器 + 空值缓存是两种常见解法。\n')
   await writeFile(join(vault, '.raw/source.md'), '原始材料，不允许改写\n')
+  // 还原点用 git ref 实现，夹具需要是仓库且至少有一个提交
+  const git = (args) => spawnSync('git', ['-C', vault, ...args], { encoding: 'utf8' })
+  git(['init', '-q'])
+  git(['add', '-A'])
+  git(['-c', 'user.name=e2e', '-c', 'user.email=e2e@test', 'commit', '-q', '-m', 'fixture'])
 
   // headless 只带 llm-deepseek-account，缺凭据层与 account 服务本体，补上后可用账号路由
   const overlay = join(dir, 'overlay.yml')
@@ -118,6 +123,27 @@ try {
     } else {
       const answer = c.events.filter((event) => event.type === 'final').map((event) => event.text ?? '').join('\n')
       record('会话注入进入了模型上下文', /pko|接入|验证/.test(answer), answer.slice(0, 60))
+    }
+
+    // ---- 会话 D：写入与还原点 ----
+    console.log('\n▸ 会话 D：pko_capture 写入 + pko_checkpoint 创建')
+    const d = runSession(vault, overlay, [
+      '请做两件事，不要问我确认：',
+      '1) 用 pko_capture 记一条笔记：标题「E2E 验证」，正文「插件写入验证成功」。',
+      '2) 用 pko_checkpoint 创建一个还原点。',
+      '完成后只回一句“完成”。',
+    ].join(' '))
+    if (d.blocked) {
+      blocked = d.stderr.split('\n').find((line) => /MISSING_CREDENTIAL|ACCOUNT_SIGN_IN_REQUIRED/.test(line)) ?? 'auth'
+    } else {
+      const tools = d.events.filter((event) => event.type === 'tool_call').map((event) => event.tool)
+      record('agent 调用了 pko_capture 与 pko_checkpoint', tools.includes('pko_capture') && tools.includes('pko_checkpoint'), tools.join(','))
+      const inbox = await readdir(join(vault, '00-Inbox')).catch(() => [])
+      const note = inbox.find((name) => name.includes('E2E') || name.includes('验证'))
+      const noteText = note === undefined ? '' : await readFile(join(vault, '00-Inbox', note), 'utf8')
+      record('写入落盘且带完整 frontmatter', noteText.includes('type: note') && noteText.includes('created:'), note ?? '(无文件)')
+      const refs = spawnSync('git', ['-C', vault, 'for-each-ref', 'refs/pko/ckpt'], { encoding: 'utf8' }).stdout ?? ''
+      record('创建了 git 还原点', refs.trim() !== '', refs.trim().split('\n')[0] ?? '')
     }
 
     // ---- 会话 B：闸门 ----
