@@ -35,14 +35,6 @@
       "patch": "./cordis.patch.yml"
     }
   },
-  "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.2-rc.1"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh": {
-      "optional": true
-    }
-  },
   "scripts": {
     "build": "tsc -p tsconfig.json"
   }
