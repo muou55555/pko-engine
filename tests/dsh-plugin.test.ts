@@ -49,12 +49,13 @@ async function makeVault(): Promise<string> {
   return root
 }
 
-test('dsh 插件：注册 7 个工具且无重名', () => {
+test('dsh 插件：注册 8 个工具且无重名', () => {
   const host = makeHost()
   apply(host.ctx as never, {})
   const names = host.tools.map((tool) => tool.name).sort()
   assert.deepEqual(names, [
-    'pko_capture', 'pko_context', 'pko_ingest', 'pko_lint', 'pko_normalize', 'pko_query', 'pko_read',
+    'pko_capture', 'pko_checkpoint', 'pko_context', 'pko_ingest',
+    'pko_lint', 'pko_normalize', 'pko_query', 'pko_read',
   ])
   assert.equal(new Set(names).size, names.length)
 })

@@ -3,6 +3,7 @@
 import { join, resolve } from 'node:path'
 import type { DoctorReport, Severity } from './types.ts'
 import { bodyContext, sessionContext, taskContext } from './context.ts'
+import { createCheckpoint, listCheckpoints, restoreCheckpoint } from './checkpoint.ts'
 import { runDoctor } from './doctor.ts'
 import { runHook } from './hook.ts'
 import { acquireLock } from './lock.ts'
@@ -21,13 +22,19 @@ const USAGE = `pko — PKO 知识引擎 CLI
   pko normalize --vault <路径> [--apply]
   pko query <词> --vault <路径> [--json] [--mode auto|index-only] [--max N] [--deep]
   pko context   --vault <路径> [--task "<原话>"] [--page <id>] [--json]
-  pko hook      [--vault <路径>]        从 stdin 读取宿主事件 JSON
+  pko checkpoint  [--vault <路径>]      创建还原点（git ref，不动工作区）
+  pko checkpoints [--vault <路径>]      列出还原点
+  pko restore <id> --vault <路径>       恢复到某个还原点
+  pko hook        [--vault <路径>]      从 stdin 读取宿主事件 JSON
 
 命令：
   doctor     审计 vault：frontmatter / 断链 / 孤儿页 / 重复 id
   normalize  补齐缺失的 frontmatter 字段（默认 dry-run）
   query      分层检索：index → 标题/标签/摘要 → 正文 → 双链邻居
   context    输出三档上下文之一：会话档 / 任务档 / 整页档
+  checkpoint 创建 git 还原点（快照工作区，不改变当前状态）
+  checkpoints 列出还原点
+  restore    把某个还原点的内容恢复到工作区
   hook       宿主钩子统一入口（Claude Code settings.json 调用）
 
 退出码：doctor 有 error 为 1；用法错误为 2；hook 拒绝为 2。
@@ -253,6 +260,30 @@ try {
     process.exit(report.counts.error > 0 ? 1 : 0)
   }
   if (args.command === 'normalize') process.exit(await runNormalize(args.vault, args.apply))
+  if (args.command === 'checkpoint') {
+    const checkpoint = await createCheckpoint(resolve(args.vault))
+    process.stdout.write(`已创建还原点 ${checkpoint.id}（${checkpoint.sha.slice(0, 8)}）\n`)
+    process.exit(0)
+  }
+  if (args.command === 'checkpoints') {
+    const list = await listCheckpoints(resolve(args.vault))
+    if (list.length === 0) {
+      process.stdout.write('pko: 还没有任何还原点\n')
+      process.exit(0)
+    }
+    for (const item of list) process.stdout.write(`${item.id}  ${item.sha.slice(0, 8)}\n`)
+    process.exit(0)
+  }
+  if (args.command === 'restore') {
+    const id = args.positional[0]
+    if (id === undefined) {
+      process.stderr.write('pko: restore 需要一个还原点 id\n')
+      process.exit(2)
+    }
+    const result = await restoreCheckpoint(resolve(args.vault), id)
+    process.stdout.write(`已恢复到 ${id}（${result.sha.slice(0, 8)}）。注意：之后新增的文件不会被删除。\n`)
+    process.exit(0)
+  }
   if (args.command === 'query') process.exit(await runQuery(args))
   if (args.command === 'context') process.exit(await runContext(args))
   if (args.command === 'hook') process.exit(await runHookCommand(args.vault))

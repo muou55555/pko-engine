@@ -33,3 +33,6 @@ export type { Candidate, MatchedBy, RetrievalResult, RetrieveOptions } from './r
 export { retrieve } from './retrieve.ts'
 export type { ContextOptions, ContextResult, ContextTier } from './context.ts'
 export { DEFAULT_BUDGET, bodyContext, sessionContext, taskContext } from './context.ts'
+
+export type { Checkpoint } from './checkpoint.ts'
+export { createCheckpoint, isGitRepo, listCheckpoints, restoreCheckpoint } from './checkpoint.ts'

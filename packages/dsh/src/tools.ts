@@ -11,6 +11,7 @@ import { parseFrontmatter } from '../../core/src/schema.ts'
 import { readIfExists, atomicWrite } from '../../core/src/store.ts'
 import { sha256 } from '../../core/src/hash.ts'
 import { vaultPaths } from '../../core/src/paths.ts'
+import { createCheckpoint, listCheckpoints, restoreCheckpoint } from '../../core/src/checkpoint.ts'
 import { join } from 'node:path'
 
 /** 纯文本内容块。 */
@@ -243,6 +244,41 @@ export const TOOL_SPECS: readonly ToolSpec[] = [
     run: async (vault) => {
       const report = await runDoctor(vault)
       return { pages: report.pages, counts: report.counts }
+    },
+  },
+  {
+    name: 'pko_checkpoint',
+    description: '还原点：create 创建、list 列出、restore 恢复。用 git ref 实现，创建时不改动工作区。',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        action: { type: 'string', enum: ['create', 'list', 'restore'] },
+        id: { type: 'string', description: 'action=restore 时的还原点 id' },
+      },
+      required: ['action'],
+    },
+    outputSchema: { type: 'object', properties: { action: { type: 'string' }, checkpoints: { type: 'array' } } },
+    render: (_args, value) => {
+      const result = value as { action: string; id?: string; checkpoints?: Array<{ id: string; sha: string }> }
+      if (result.action === 'create') return text(`pko: 已创建还原点 ${result.id ?? ''}`)
+      if (result.action === 'restore') return text(`pko: 已恢复到还原点 ${result.id ?? ''}`)
+      const list = result.checkpoints ?? []
+      return text(list.length === 0 ? 'pko: 还没有还原点' : `还原点（${list.length}）：\n${list.map((item) => `- ${item.id} ${item.sha.slice(0, 8)}`).join('\n')}`)
+    },
+    run: async (vault, args) => {
+      const action = str(args, 'action') ?? 'list'
+      if (action === 'create') {
+        const checkpoint = await createCheckpoint(vault)
+        return { action, id: checkpoint.id }
+      }
+      if (action === 'restore') {
+        const id = str(args, 'id') ?? ''
+        if (id === '') throw new Error('pko: restore 需要 id')
+        await restoreCheckpoint(vault, id)
+        return { action, id }
+      }
+      return { action: 'list', checkpoints: await listCheckpoints(vault) }
     },
   },
   {

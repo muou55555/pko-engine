@@ -8,6 +8,8 @@ export interface PkoConfig {
   readonly maxInjectTokens?: number
   /** 是否启用文件闸门，默认 true。 */
   readonly guard?: boolean
+  /** 会话开始时把随包技能投放到 vault，默认 true。 */
+  readonly installSkills?: boolean
 }
 
 /**
@@ -21,8 +23,9 @@ export function readConfig(raw: unknown): PkoConfig {
   const vault = typeof value.vault === 'string' && value.vault.trim() !== '' ? value.vault : undefined
   const trigger = typeof value.trigger === 'boolean' ? value.trigger : true
   const guard = typeof value.guard === 'boolean' ? value.guard : true
+  const installSkills = typeof value.installSkills === 'boolean' ? value.installSkills : true
   const maxInjectTokens = typeof value.maxInjectTokens === 'number' && Number.isFinite(value.maxInjectTokens)
     ? Math.max(50, Math.floor(value.maxInjectTokens))
     : 400
-  return { ...(vault === undefined ? {} : { vault }), trigger, guard, maxInjectTokens }
+  return { ...(vault === undefined ? {} : { vault }), trigger, guard, installSkills, maxInjectTokens }
 }

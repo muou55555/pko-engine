@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import type { PkoConfig } from './config.ts'
 import { resolveVault } from './vault.ts'
 import { userNotice } from './notice.ts'
+import { ensureSkills } from './skills.ts'
 import { sessionContext, taskContext } from '../../core/src/context.ts'
 import { checkBash, checkWrite, normalizeRel } from '../../core/src/policy.ts'
 import { existsSync, statSync } from 'node:fs'
@@ -88,6 +89,16 @@ export function mountEvents(ctx: EventHost, config: PkoConfig): () => void {
     try {
       const vault = resolveVault(config.vault, cwdOf(agent))
       if (vault === undefined) return
+      if (config.installSkills !== false) {
+        try {
+          const result = ensureSkills(vault)
+          if (result.installed.length > 0) {
+            ctx.logger?.info?.(`[pko] 已投放 ${result.installed.length} 个技能：${result.installed.join(', ')}`)
+          }
+        } catch (error) {
+          ctx.logger?.warn?.(`[pko] 技能投放失败：${String(error)}`)
+        }
+      }
       const context = await sessionContext(vault, { maxTokens: config.maxInjectTokens })
       if (context === undefined) return
       agent.inject(userNotice(context.text))
