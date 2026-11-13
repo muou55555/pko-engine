@@ -17,7 +17,8 @@
 **铁律**：适配器依赖 core，core 不认识适配器。core 里出现 `@deepseek-ai/*` 就是设计事故。
 
 `@pko/dsh` 的构建产物是**自包含**的：`tsc` 的 `rootDir` 是 `packages/`，一次编译把 core 与 dsh 一起输出到
-`packages/dsh/lib/`，所以插件装进 profile 后不依赖宿主的任何包（profile 的 `node_modules` 里也没有它们）。
+`packages/dsh/lib/`。它不依赖宿主的 `@deepseek-ai/dsh-*` 包（profile 里也没有它们）；
+唯一的运行时依赖是 `@deepseek-ai/schemastery`，用于导出配置 schema 让 Web 设置页生成表单。
 
 ---
 

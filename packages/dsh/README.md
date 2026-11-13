@@ -46,6 +46,9 @@ DSH 会自动把 `@pko/dsh` 登记进 `dsh.profile.bundles`，不需要手改配
 
 ## 配置
 
+插件导出 `Config` schema，DSH 的「设置 → 插件 → pko-engine」会自动生成表单；
+改动写回 profile 的 `cordis.patch.yml`。也可以直接编辑该文件：
+
 ```yaml
 - id: pko-engine
   name: '@pko/dsh'
@@ -62,7 +65,7 @@ vault 识别标记：`.pko/` 或 `50-Wiki/` 目录（后者保证"还没建索�
 
 ## 零运行时依赖
 
-产物只 import `node:*` 和自带模块：插件被装进 profile 后，无法解析宿主的
+产物不 import 宿主的 `@deepseek-ai/dsh-*`：插件被装进 profile 后，无法解析宿主的
 `@deepseek-ai/*` 包。CI 有一条检查：
 
 ```sh

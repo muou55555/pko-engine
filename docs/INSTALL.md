@@ -199,6 +199,25 @@ npm run test:install        # 自动验证 tgz 与 git 两种安装方式
 
 ## 五、配置
 
+### 在 Web 设置页里配置（推荐）
+
+装好并重启后，打开 **设置 → 插件 → pko-engine**，会看到自动生成的表单：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `vault` | 文本 | 固定知识库路径；留空按会话目录查找 |
+| `sessionContext` | 开关 | 会话开始注入 hot.md 与 north-star（默认关） |
+| `trigger` | 开关 | 提问时召回相关页面（默认关） |
+| `guard` | 开关 | 写入闸门 |
+| `installSkills` | 开关 | 会话开始投放技能 |
+| `maxInjectTokens` | 数字 | 注入预算 |
+
+表单由插件导出的 `Config` schema 自动生成，改动会写回该 profile 的
+`cordis.patch.yml`——和你手改文件是同一个位置。
+
+### 配置文件方式
+
+
 默认配置通常够用。要改的话，在 profile 的 patch 文件里覆盖（推荐）：
 
 ```yaml

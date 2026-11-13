@@ -17,7 +17,9 @@ tests/             单元、集成、功能、并发、崩溃、性能、文档�
 ## 四条铁律
 
 1. **core 零宿主依赖**：`packages/core` 只 import `node:*` 和自身模块。
-   出现 `@deepseek-ai/*` 就是设计事故——插件的 `lib/` 会被装进 profile，那里解析不到宿主包。
+   适配层（`packages/dsh`）唯一允许的运行时依赖是 `@deepseek-ai/schemastery`
+   （用于导出配置 schema、让 Web 设置页自动生成表单）。其它 `@deepseek-ai/*` 一律禁止——
+   插件的 `lib/` 会被装进 profile，宿主的包在那里解析不到。
 2. **产物提交进仓库**：`packages/dsh/lib/` 纳入版本控制。
    原因：pnpm 默认拦截 git 依赖的 `prepare` 构建，提交产物才能让 git 安装零额外步骤。
    改完源码必须 `npm run build:dsh` 并提交 `lib/`，否则 git 安装拿到旧产物。

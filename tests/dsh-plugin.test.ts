@@ -4,7 +4,8 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { apply } from '../packages/dsh/src/index.ts'
+import { Config, apply } from '../packages/dsh/src/index.ts'
+import { readConfig } from '../packages/dsh/src/config.ts'
 
 interface RegisteredTool { name: string; description: string }
 
@@ -265,4 +266,20 @@ test('pko_init：plan=true 只预览、不写盘', async () => {
 
   const real = await callTool(host, 'pko_init', {}, dir) as { createdDirs: number }
   assert.ok(real.createdDirs > 0, '确认后才真正创建')
+})
+
+
+test('配置 schema：导出的 Config 与运行时默认值一致（设置页表单的来源）', () => {
+  const resolved = Config({}) as Record<string, unknown>
+  assert.equal(resolved.vault, '')
+  assert.equal(resolved.sessionContext, false)
+  assert.equal(resolved.trigger, false)
+  assert.equal(resolved.guard, true)
+  assert.equal(resolved.installSkills, true)
+  assert.equal(resolved.maxInjectTokens, 400)
+
+  const parsed = readConfig(resolved)
+  assert.equal(parsed.sessionContext, false)
+  assert.equal(parsed.trigger, false)
+  assert.equal(parsed.guard, true)
 })
