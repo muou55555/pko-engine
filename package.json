@@ -22,7 +22,8 @@
     "build": "npm run build:dsh && npm run typecheck",
     "test:all": "npm test && npm run hygiene && npm run typecheck",
     "pack:dsh": "node scripts/pack-plugin.mjs",
-    "test:install": "node tests/e2e/install-methods.mjs"
+    "test:install": "node tests/e2e/install-methods.mjs",
+    "dev:dsh": "node scripts/dev-dsh.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

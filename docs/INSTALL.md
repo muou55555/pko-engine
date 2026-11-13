@@ -73,7 +73,9 @@ npm run build:dsh
 dsh plugin --profile web add link:"$PWD/packages/dsh"
 ```
 
-`link:` 是指向源码的符号链接——之后改代码、重新 `npm run build:dsh`、重启 DSH 即可。
+`link:` 是指向源码的符号链接——之后改代码、重新构建、重启 DSH 即可。
+
+日常开发循环（自动重编译 + 技能自动同步）见 **[开发文档](DEVELOPMENT.md)**。
 
 ### 方式 B：本地 tgz（稳定使用推荐）
 

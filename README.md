@@ -59,8 +59,11 @@ dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.0.tgz"
 dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#path:packages/dsh"
 ```
 
-完整步骤（含前置条件、验证、排错）：见 **[安装手册](docs/INSTALL.md)**。
-日常怎么用：见 **[使用手册](docs/USAGE.md)**。
+文档：
+
+- **[安装手册](docs/INSTALL.md)** —— 前置条件、四种安装方式、验证、排错
+- **[使用手册](docs/USAGE.md)** —— 技能、工具、工作流、写入规则
+- **[开发文档](docs/DEVELOPMENT.md)** —— 源码调试、开发循环、事件观测
 
 ## 常用命令
 
