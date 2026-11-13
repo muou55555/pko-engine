@@ -12,7 +12,8 @@ import { sha256 } from "../../core/src/hash.js";
 import { vaultPaths } from "../../core/src/paths.js";
 import { createCheckpoint, listCheckpoints, restoreCheckpoint } from "../../core/src/checkpoint.js";
 import { applyScaffold, hasVaultMarker, planScaffold, vaultStatus } from "../../core/src/scaffold.js";
-import { isAbsolute, join, resolve } from 'node:path';
+import { isInboxPath, markStatusDone } from "../../core/src/inbox.js";
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { homedir } from 'node:os';
 /** 从执行上下文防御性读取会话目录。 */
 export function cwdOf(exec) {
@@ -163,12 +164,12 @@ export const TOOL_SPECS = [
     },
     {
         name: 'pko_ingest',
-        description: '批量写入知识页；同一来源内容未变时自动跳过（contentHash 增量）。',
+        description: '批量写入知识页；同一来源内容未变时自动跳过（contentHash 增量）。写入成功后把来源文件（若在 00-Inbox）的 status 标为 done。',
         parameters: {
             type: 'object',
             additionalProperties: false,
             properties: {
-                source: { type: 'string', description: '来源标识：URL / 文件路径 / 会话 id' },
+                source: { type: 'string', description: '来源标识：URL / 文件路径 / 会话 id。传 00-Inbox 里的原件路径可自动标记完成' },
                 pages: {
                     type: 'array',
                     items: {
@@ -178,13 +179,23 @@ export const TOOL_SPECS = [
                         required: ['path', 'body'],
                     },
                 },
+                markDone: { type: 'boolean', description: '是否在成功后把 00-Inbox 来源的 status 标为 done（默认 true）' },
             },
             required: ['pages'],
         },
-        outputSchema: { type: 'object', properties: { written: { type: 'number' }, skipped: { type: 'number' }, paths: { type: 'array' } } },
+        outputSchema: {
+            type: 'object',
+            properties: {
+                written: { type: 'number' },
+                skipped: { type: 'number' },
+                paths: { type: 'array' },
+                markedDone: { type: 'string' },
+            },
+        },
         render: (_args, value) => {
             const result = value;
-            return text(`pko: 写入 ${result.written} 页，跳过 ${result.skipped} 页`);
+            const tail = result.markedDone === undefined ? '' : `；原件 ${result.markedDone} 已标记 done`;
+            return text(`pko: 写入 ${result.written} 页，跳过 ${result.skipped} 页${tail}`);
         },
         run: async (vault, args) => {
             const source = str(args, 'source');
@@ -212,7 +223,28 @@ export const TOOL_SPECS = [
                 else
                     written += 1;
             }
-            return { written, skipped, paths };
+            // 写入成功后标记来源完成：只动 00-Inbox 内文件的 status 字段
+            let markedDone;
+            if (args.markDone !== false && source !== undefined && !/^https?:/i.test(source)) {
+                try {
+                    const abs = isAbsolute(source) ? source : resolve(vault, source);
+                    const rel = relative(vault, abs).replace(/\\/g, '/');
+                    if (rel !== '' && !rel.startsWith('..') && isInboxPath(rel)) {
+                        const original = await readIfExists(abs);
+                        if (original !== undefined) {
+                            const updated = markStatusDone(original);
+                            if (updated !== original) {
+                                await atomicWrite(abs, updated);
+                                markedDone = rel;
+                            }
+                        }
+                    }
+                }
+                catch {
+                    // 标记失败不影响页面写入结果
+                }
+            }
+            return { written, skipped, paths, ...(markedDone === undefined ? {} : { markedDone }) };
         },
     },
     {

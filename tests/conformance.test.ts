@@ -67,7 +67,7 @@ test('规范：AGENTS.md 写进了目录、命名、路由与安全规则', () =
 
 test('规范：每个技能都覆盖它在 vault 里对应的流程', async () => {
   const expectations: Array<[string, string[]]> = [
-    ['pko-ingest', ['00-Inbox', 'YYYY-MM-DD-', '50-Wiki/index.md', '10-Atlas/moc-', '_templates/wiki-page.md', '⚠️ 待确认', '[[链接]]']],
+    ['pko-ingest', ['00-Inbox', 'YYYY-MM-DD-', '50-Wiki/index.md', '10-Atlas/moc-', '_templates/wiki-page.md', '⚠️ 待确认', '[[链接]]', 'status: done', '标记完成']],
     ['pko-save', ['40-Resources/how-to/', '40-Resources/concepts/', '80-Cards/', '20-Projects/work/', '30-Areas/work/llm/', '30-Areas/work/quant/', '30-Areas/life/', '70-Calendar/daily/', '10-Atlas/moc-']],
     ['pko-daily', ['brain/north-star.md', '50-Wiki/hot.md', '70-Calendar/daily/', '_templates/daily-note.md', '00-Inbox', '20-Projects/work/', 'status: active']],
     ['pko-query', ['50-Wiki/hot.md', '50-Wiki/index.md', '10-Atlas/HOME.md', '10-Atlas/moc-', 'vault 中暂无此内容']],

@@ -283,3 +283,50 @@ test('配置 schema：导出的 Config 与运行时默认值一致（设置页�
   assert.equal(parsed.trigger, false)
   assert.equal(parsed.guard, true)
 })
+
+
+test('pko_ingest：写入成功后把 00-Inbox 来源标为 done，正文不变', async () => {
+  const host = makeHost()
+  const root = await mkdtemp(join(tmpdir(), 'pko-ingest-'))
+  await mkdir(join(root, '00-Inbox'), { recursive: true })
+  await mkdir(join(root, '50-Wiki'), { recursive: true })
+  apply(host.ctx as never, { vault: root })
+
+  const original = '---\nid: demo\ntitle: 演示\nstatus: draft\ntags: [a]\n---\n\n原始正文\n'
+  await writeFile(join(root, '00-Inbox/demo.md'), original)
+  await callTool(host, 'pko_ingest', {
+    source: '00-Inbox/demo.md',
+    pages: [{ path: '50-Wiki/demo.md', body: '# 演示\n\n蒸馏页', title: '演示' }],
+  }, root)
+
+  const after = await (await import('node:fs/promises')).readFile(join(root, '00-Inbox/demo.md'), 'utf8')
+  assert.match(after, /status: done/)
+  assert.doesNotMatch(after, /status: draft/)
+  assert.match(after, /原始正文/, '正文必须原样保留')
+  assert.match(after, /tags: \[a\]/, '其它字段必须保留')
+})
+
+test('pko_ingest：markDone=false 时不动原件；非 Inbox 来源不动', async () => {
+  const host = makeHost()
+  const root = await mkdtemp(join(tmpdir(), 'pko-ingest2-'))
+  await mkdir(join(root, '00-Inbox'), { recursive: true })
+  await mkdir(join(root, '40-Resources'), { recursive: true })
+  apply(host.ctx as never, { vault: root })
+
+  const inbox = '---\nstatus: draft\n---\n\n正文\n'
+  await writeFile(join(root, '00-Inbox/off.md'), inbox)
+  await callTool(host, 'pko_ingest', {
+    source: '00-Inbox/off.md',
+    markDone: false,
+    pages: [{ path: '50-Wiki/off.md', body: '# off' }],
+  }, root)
+  assert.equal(await (await import('node:fs/promises')).readFile(join(root, '00-Inbox/off.md'), 'utf8'), inbox)
+
+  const outside = '---\nstatus: draft\n---\n\n正文\n'
+  await writeFile(join(root, '40-Resources/outside.md'), outside)
+  await callTool(host, 'pko_ingest', {
+    source: '40-Resources/outside.md',
+    pages: [{ path: '50-Wiki/outside.md', body: '# outside' }],
+  }, root)
+  assert.equal(await (await import('node:fs/promises')).readFile(join(root, '40-Resources/outside.md'), 'utf8'), outside)
+})

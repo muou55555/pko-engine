@@ -36,7 +36,8 @@
 | 4. 留存原件 | 摄取时 | 原件存成 `00-Inbox/YYYY-MM-DD-<标题>.md` | `00-Inbox/` | 内容一字未改；留在原地不移动 |
 | 5. 落位 | 摄取 / 保存 | 按路由表进 PARA 对应目录 | 目标目录出现新页 | 目录符合《写入路由》 |
 | 6. 连接 | 摄取 / 保存 / `/pko-moc` | 在 index 与 `moc-*.md` 加链接 | 链接真实可跳转 | `pko_lint` 无断链 |
-| 7. 登记与复盘 | 写入自动 + 收尾 | 追加 `log.md`；收尾重写 `hot.md` | `log.md` / `hot.md` | hot 里能看出最近在做什么 |
+| 7. 标记完成 | 摄取入库后 | 把原件 `status` 改成 `done` | 原件 frontmatter | 下次摄取跳过它 |
+| 8. 登记与复盘 | 写入自动 + 收尾 | 追加 `log.md`；收尾重写 `hot.md` | `log.md` / `hot.md` | hot 里能看出最近在做什么 |
 
 **核心原则**：先捕获，再整理；积累重于完美；用则维护。
 
@@ -92,6 +93,7 @@
 5. 写入（pko_ingest / pko_capture，contentHash 去重）
 6. 更新 50-Wiki/index.md 与对应 moc-*.md
 7. log.md 自动追加
+8. 原件的 status 改成 done（工具自动；再次摄取时据此跳过）
 ```
 
 ### 质量标准（缺一不可）

@@ -66,6 +66,7 @@
 蒸馏页 → 50-Wiki/<主题>.md 或 40-Resources/...
 索引 → 50-Wiki/index.md 与 10-Atlas/moc-*.md 加链接
 日志 → 50-Wiki/log.md 自动追加
+完成标记 → 原件 frontmatter 的 status 改为 done（下次摄取跳过）
 ```
 
 写入路由（`/pko-save` 与 `/pko-ingest` 共用）：

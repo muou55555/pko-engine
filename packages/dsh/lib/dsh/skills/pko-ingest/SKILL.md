@@ -12,10 +12,16 @@ disable-model-invocation: true
 ## 执行步骤
 
 1. **确定来源**
-   - **没给来源** → 处理 Inbox：`glob 00-Inbox/*`，列出所有文件（跳过子目录），
-     逐个走完步骤 2–7。**原件留在 00-Inbox 原地**，不要移动、不要删除；
-     需要区分是否处理过，可以给它加日期前缀（在 00-Inbox 内重命名）。
-     Inbox 为空 → 告知用户并结束。
+   - **没给来源** → 处理 Inbox：`glob 00-Inbox/*`，列出所有文件（跳过子目录）
+     - **准入判据只有一条：frontmatter 的 `status` 是不是 `done`**
+       - `status: done` → 已摄取，**跳过**
+       - 其余一律处理（缺失 / 空值 / `draft` / `active` / `none` / 其他任何值）
+       - `.xlsx` / `.docx` / 图片等附件不是笔记，不参与筛选
+     - 待处理的逐个走完步骤 2–8；**原件留在 00-Inbox 原地**：不移动、不重命名、不删除
+     - 原件唯一的允许改写是**把 frontmatter 的 `status` 改成 `done`**（步骤 8），其余字节一律不动
+     - 原件被外部工具（如 Obsidian）改写时，**先报告再等指令**，不自行还原
+     - 跳过的条目必须在报告里列出来并注明 `status: done`，不许静默略过
+     - Inbox 为空或全部 `done` → 告知用户并结束
    - **URL**（http 开头，不以 .md 结尾）→ `web_fetch` 抓取
    - **URL（.md 结尾）** → 直接 `web_fetch`，已是 Markdown
    - **本地文件路径** → `read`
@@ -38,6 +44,8 @@ disable-model-invocation: true
 
 5. **入库**：用 `pko_ingest`（批量）或 `pko_capture`（单页）写入。同一来源重复摄取会被
    contentHash 跳过，不会产生 `-2` 副本。
+   - 走 Inbox 流程时，把 `source` 传成**原件的路径**（如 `00-Inbox/缓存穿透.md`），
+     工具会在写入成功后自动执行步骤 8
 
 6. **更新索引**
    - 在 `50-Wiki/index.md` 对应分类下加一行链接
@@ -46,6 +54,18 @@ disable-model-invocation: true
 
 7. **记录日志 + 更新热缓存**：写入工具会自动追加 `50-Wiki/log.md`；
    `50-Wiki/hot.md` 由 `/pko-wrap-up` 统一重写，这里不用动。
+
+8. **标记完成**：把原件的 frontmatter `status` 改成 `done`——这是"已摄取"的唯一判据，
+   下次 `/pko-ingest` 会跳过它。
+   - 通过 `pko_ingest` 且 `source` 是 Inbox 路径时，**工具会自动完成**，不用手改
+   - 没有经过工具（比如手工 write）时，用 `edit` 只改这一行：`status: done`
+   - 没有 frontmatter 的原件，在顶部插入最小块：
+     ```
+     ---
+     status: done
+     ---
+     ```
+   - **除 `status` 外不改任何内容**
 
 ## 摄取质量标准
 
