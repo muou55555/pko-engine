@@ -57,7 +57,7 @@ npm run test:e2e
 ```sh
 node tests/e2e/install-methods.mjs                    # tgz + git 都测
 node tests/e2e/install-methods.mjs --mode tgz
-node tests/e2e/install-methods.mjs --mode git --repo https://github.com/<你>/pko-engine.git
+node tests/e2e/install-methods.mjs --mode git --repo https://github.com/muou55555/pko-engine.git
 ```
 
 每种方式：建一次性 profile → 安装 → 真实会话调用 `pko_lint` → 检查 8 个技能投放 → 清理。

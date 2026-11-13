@@ -1,5 +1,7 @@
 # pko-engine
 
+仓库：https://github.com/muou55555/pko-engine
+
 把 Obsidian 知识库变成 Agent 能可靠使用的一等公民：**知识引擎（core）+ 宿主适配层 + 技能包**。
 
 目前提供 **DeepSeek Harness** 适配（`@pko/dsh`），同一个 core 也能通过 CLI 被其它工具复用。
@@ -40,7 +42,7 @@ pko-engine 把这些变成确定性能力：**检索、写入、治理、上下�
 ## 快速开始
 
 ```sh
-git clone <本仓库> pko-engine
+git clone https://github.com/muou55555/pko-engine.git pko-engine
 cd pko-engine
 pnpm install
 npm run build:dsh
@@ -56,7 +58,7 @@ npm run pack:dsh                        # 打包成 tgz
 dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.0.tgz"
 
 # 或者直接从 Git 仓库安装（需把仓库推到你自己的远端）
-dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#path:packages/dsh"
+dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#path:packages/dsh"
 ```
 
 文档：

@@ -65,7 +65,7 @@ cp -R examples/minimal-vault ~/my-pko-vault
 ### 方式 A：源码 link（开发推荐）
 
 ```sh
-git clone <本仓库> pko-engine
+git clone https://github.com/muou55555/pko-engine.git pko-engine
 cd pko-engine
 pnpm install
 npm run build:dsh
@@ -92,13 +92,13 @@ tgz 是快照：之后改源码不影响已装的版本；要更新就重新打�
 ### 方式 C：Git 仓库（不发布 npm 也能分发）
 
 ```sh
-dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#path:packages/dsh"
+dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#path:packages/dsh"
 ```
 
 锁定到某个 tag（推荐）：
 
 ```sh
-dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#v0.1.0&path:packages/dsh"
+dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#v0.1.0&path:packages/dsh"
 ```
 
 说明：

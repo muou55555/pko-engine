@@ -7,7 +7,7 @@
 ## 一、一次性设置
 
 ```sh
-git clone <本仓库> pko-engine
+git clone https://github.com/muou55555/pko-engine.git pko-engine
 cd pko-engine
 pnpm install
 npm run build:dsh        # 生成 packages/dsh/lib（含内联 core 与技能）
