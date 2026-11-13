@@ -23,7 +23,7 @@ export { KNOWN_KEYS, extraFields, firstHeading, normalizePage, renderPage, summa
 export type { Manifest, ManifestEntry } from './manifest.ts'
 export { MANIFEST_VERSION, emptyManifest, mergeManifest, readManifest, writeManifest } from './manifest.ts'
 export type { WritePageInput, WritePageResult } from './writer.ts'
-export { appendLogLine, existsFile, recordActivity, stamp, writePage } from './writer.ts'
+export { appendLogLine, existsFile, recordActivity, resolveInsideVault, stamp, writePage } from './writer.ts'
 export type { HookOptions, HookOutcome } from './hook.ts'
 export { runHook } from './hook.ts'
 export { CORE_VERSION, PRODUCED_BY } from './version.ts'

@@ -240,7 +240,14 @@ if (args.command === '') {
 
 try {
   if (args.command === 'doctor') {
-    const report = await runDoctor(resolve(args.vault))
+    let report: DoctorReport
+    try {
+      report = await runDoctor(resolve(args.vault))
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      process.stderr.write(`pko: 无法审计 vault "${args.vault}"：${reason}\n`)
+      process.exit(2)
+    }
     if (args.json) process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
     else printReport(report)
     process.exit(report.counts.error > 0 ? 1 : 0)

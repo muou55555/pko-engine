@@ -178,3 +178,34 @@ test('writePage：提供 sourceKey 与 contentHash 时写入 manifest', async ()
   assert.deepEqual(manifest.sources['https://example.com/a']?.pages, ['m'])
   assert.match(manifest.sources['https://example.com/a']?.producedBy ?? '', /^@pko\/core@/)
 })
+
+test('写入：相对路径越出 vault 被拒绝', async () => {
+  const root = await makeVault()
+  await assert.rejects(
+    () => writePage({ vault: root, relPath: '../escape.md', body: '# 越界' }),
+    /越出 vault/,
+  )
+  await assert.rejects(() => readFile(join(root, '..', 'escape.md'), 'utf8'), /ENOENT/)
+})
+
+test('写入：绝对路径被归一化为 vault 内相对路径（不会写到 /etc）', async () => {
+  const root = await makeVault()
+  const result = await writePage({ vault: root, relPath: '/etc/passwd.md', body: '# 归一化' })
+  assert.equal(result.relPath, 'etc/passwd.md')
+  assert.match(await readFile(join(root, 'etc', 'passwd.md'), 'utf8'), /id: passwd/)
+})
+
+test('写入：绕行路径（a/../../、反斜杠）被拒绝', async () => {
+  const root = await makeVault()
+  for (const relPath of ['a/../../escape2.md', '..\\escape3.md', '..']) {
+    await assert.rejects(() => writePage({ vault: root, relPath, body: 'x' }), /越出 vault/)
+  }
+})
+
+test('manifest：版本高于本进程支持时拒绝读取', async () => {
+  const root = await makeVault()
+  await mkdir(join(root, '.pko'), { recursive: true })
+  await writeFile(join(root, '.pko/manifest.json'), JSON.stringify({ version: 99, sources: {} }))
+  const { readManifest } = await import('../packages/core/src/manifest.ts')
+  await assert.rejects(() => readManifest(join(root, '.pko/manifest.json')), /manifest 版本/)
+})

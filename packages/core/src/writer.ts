@@ -5,12 +5,13 @@
  * 任何一步失败都不留下"日志说写了、文件其实没写"的状态。
  */
 import { appendFile, mkdir, stat } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { ConflictError } from './errors.ts'
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
+import { ConflictError, PkoError } from './errors.ts'
 import { sha256 } from './hash.ts'
 import { acquireLock } from './lock.ts'
 import { mergeManifest, readManifest, writeManifest } from './manifest.ts'
 import { extraFields, normalizePage, renderPage, type RawFields } from './normalize.ts'
+import { normalizeRel } from './policy.ts'
 import { vaultPaths } from './paths.ts'
 import { parseFrontmatter } from './schema.ts'
 import { atomicWrite, readIfExists } from './store.ts'
@@ -116,6 +117,27 @@ function applyExtra(page: WikiPage, extra: RawFields | undefined): WikiPage {
 }
 
 /**
+ * 把相对路径解析成 vault 内的绝对路径，越界即拒绝。
+ *
+ * 这是写路径唯一的落点判定：`relPath` 可能来自模型（工具参数），
+ * 不能因为它在 vault 相对路径上看着正常就信任它。
+ *
+ * @param root vault 根目录
+ * @param relPath 原始相对路径
+ * @returns 绝对路径
+ * @throws PkoError 路径越出 vault
+ */
+export function resolveInsideVault(root: string, relPath: string): string {
+  const rel = normalizeRel(relPath)
+  const rootAbs = resolve(root)
+  const target = resolve(rootAbs, rel)
+  if (rel === '' || isAbsolute(rel) || (target !== rootAbs && !target.startsWith(`${rootAbs}${sep}`))) {
+    throw new PkoError('PKO_PATH_ESCAPE', `写入路径越出 vault：${JSON.stringify(relPath)}`)
+  }
+  return target
+}
+
+/**
  * 写一个页面。
  * @param input 写入请求
  * @returns 写入结果；内容未变时 `skipped` 为 true
@@ -123,8 +145,8 @@ function applyExtra(page: WikiPage, extra: RawFields | undefined): WikiPage {
  */
 export async function writePage(input: WritePageInput): Promise<WritePageResult> {
   const paths = vaultPaths(input.vault)
-  const rel = input.relPath.replace(/\\/g, '/').replace(/^\.\//, '')
-  const target = join(paths.root, rel)
+  const rel = normalizeRel(input.relPath)
+  const target = resolveInsideVault(paths.root, rel)
   const now = input.now ?? new Date()
   const stem = stemOf(rel)
 
