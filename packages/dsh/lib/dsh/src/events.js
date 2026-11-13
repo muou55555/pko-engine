@@ -91,24 +91,9 @@ export function mountEvents(ctx, config) {
             return;
         try {
             const vault = resolveVault(config.vault, cwdOf(agent));
-            if (vault === undefined) {
-                // 不是知识库：不擅自创建，先请用户确认目录
-                if (config.initPrompt !== false) {
-                    agent.inject(userNotice([
-                        `当前目录不是 PKO 知识库：${cwdOf(agent)}`,
-                        '',
-                        '不要替用户直接创建目录，也不要生成 demo / 示例库。按下面的步骤引导：',
-                        '1. 先问用户：新建一个知识库，还是把某个已有目录补齐成标准结构？请用户给出目录路径。',
-                        '2. 调用 pko_init(path, plan: true) 拿到将创建 / 补齐的清单（这一步不写盘）。',
-                        '3. 把清单展示给用户，说明已有内容不会被覆盖，征得明确同意。',
-                        '4. 用户同意后再调用 pko_init(path)（必要时带 force）执行。',
-                        '5. 如果返回“库已就绪”，直接告诉用户结果，不要再跑 pko_status / pko_lint 复查。',
-                        '',
-                        '在用户确认之前，不要创建任何目录或文件。',
-                    ].join('\n')));
-                }
+            // 不是知识库：什么也不注入。安装/初始化由用户通过 /pko-setup 按需触发
+            if (vault === undefined)
                 return;
-            }
             if (config.installSkills !== false) {
                 try {
                     const result = ensureSkills(vault);
