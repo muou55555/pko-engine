@@ -46,8 +46,9 @@ DSH 会自动把 `@pko/dsh` 登记进 `dsh.profile.bundles`，不需要手改配
 
 ## 配置
 
-插件导出 `Config` schema，DSH 的「设置 → 插件 → pko-engine」会自动生成表单；
-改动写回 profile 的 `cordis.patch.yml`。也可以直接编辑该文件：
+插件导出 `Config` schema 用于**校验与默认值**（配错会加载失败，而不是静默忽略）。
+配置通过编辑 profile 的 `cordis.patch.yml` 修改——DSH 的设置页不会列出它，
+因为设置页只支持 volatile 字段，而 volatile 字段无法从配置文件读取。
 
 ```yaml
 - id: pko-engine
