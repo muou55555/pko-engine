@@ -76,10 +76,10 @@ test('vault 解析：完全不在库内时返回 undefined', async () => {
 })
 
 test('配置：缺省值正确，非法值被收敛', () => {
-  assert.deepEqual(readConfig(undefined), { trigger: true, guard: true, installSkills: true, sessionContext: true, maxInjectTokens: 400 })
+  assert.deepEqual(readConfig(undefined), { trigger: false, guard: true, installSkills: true, sessionContext: false, maxInjectTokens: 400 })
   const parsed = readConfig({ vault: '  ', trigger: 'no', guard: 1, installSkills: false, maxInjectTokens: 10 })
   assert.equal(parsed.vault, undefined, '空字符串不应当作路径')
-  assert.equal(parsed.trigger, true, '非布尔值回落默认')
+  assert.equal(parsed.trigger, false, '非布尔值回落默认（关闭）')
   assert.equal(parsed.guard, true)
   assert.equal(parsed.installSkills, false)
   assert.equal(parsed.maxInjectTokens, 50, '预算下限为 50')
@@ -96,7 +96,7 @@ test('消息构造：形状符合宿主 user 消息契约', () => {
 test('事件：会话开始注入 hot.md 并投放技能', async () => {
   const vault = await makeVault({ '50-Wiki/hot.md': '# Hot\n\n正在做 DSH 接入验证\n' })
   const host = makeHost()
-  apply(host.ctx as never, { vault })
+  apply(host.ctx as never, { vault, sessionContext: true })
   const handler = host.handlers.get('agent/created') as (payload: unknown) => Promise<void>
 
   const injected: string[] = []
@@ -118,7 +118,7 @@ test('事件：会话开始注入 hot.md 并投放技能', async () => {
 test('事件：关闭技能投放时不再写 vault', async () => {
   const vault = await makeVault({ '50-Wiki/hot.md': '# Hot\n\n内容\n' })
   const host = makeHost()
-  apply(host.ctx as never, { vault, installSkills: false })
+  apply(host.ctx as never, { vault, installSkills: false, sessionContext: true })
   const handler = host.handlers.get('agent/created') as (payload: unknown) => Promise<void>
   await handler({ agent: { inject: () => undefined, session: { header: { cwd: vault } } } })
   await assert.rejects(() => stat(join(vault, '.dsh')), /ENOENT/)
@@ -130,7 +130,7 @@ test('事件：任务召回注入一次，同一任务不重复', async () => {
     '40-Resources/cache.md': '---\nid: cache\ntitle: 缓存穿透\ntype: note\ntier: core\ntags: [cache]\nsummary: 布隆过滤器\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 缓存穿透\n\n布隆过滤器 + 空值缓存\n',
   })
   const host = makeHost()
-  apply(host.ctx as never, { vault, installSkills: false })
+  apply(host.ctx as never, { vault, installSkills: false, trigger: true })
   const handler = host.handlers.get('agent/pre-step') as (
     payload: unknown,
     next: () => Promise<unknown>,
@@ -159,7 +159,7 @@ test('事件：关闭 trigger 后不订阅 pre-step', () => {
 test('事件：注入失败不抛给宿主', async () => {
   const vault = await makeVault({ '50-Wiki/hot.md': '# Hot\n\n内容\n' })
   const host = makeHost()
-  apply(host.ctx as never, { vault, installSkills: false })
+  apply(host.ctx as never, { vault, installSkills: false, sessionContext: true })
   const handler = host.handlers.get('agent/created') as (payload: unknown) => Promise<void>
   await handler({ agent: { inject: () => { throw new Error('宿主拒绝') }, session: { header: { cwd: vault } } } })
   assert.ok(host.warnings.some((warning) => warning.includes('会话注入失败')))
@@ -173,7 +173,7 @@ test('事件：召回只看最新用户消息，不被历史话题带偏', async
     '40-Resources/travel.md': '---\nid: travel\ntitle: 旅行计划\ntype: note\ntier: supporting\ntags: [travel]\nsummary: 行程安排\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 旅行计划\n\n行程安排\n',
   })
   const host = makeHost()
-  apply(host.ctx as never, { vault, installSkills: false })
+  apply(host.ctx as never, { vault, installSkills: false, trigger: true })
   const handler = host.handlers.get('agent/pre-step') as (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>
   const injected: string[] = []
   const agent = { inject: (message: unknown) => { injected.push(textOf(message)) }, session: { header: { cwd: vault } } }

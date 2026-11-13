@@ -207,7 +207,8 @@ npm run test:install        # 自动验证 tgz 与 git 两种安装方式
   name: '@pko/dsh'
   config:
     vault: /Users/你/你的库      # 固定 vault 路径；null 表示按会话目录找
-    trigger: true               # 任务级自动召回
+    sessionContext: false       # 会话开始注入 hot.md（默认关）
+    trigger: false              # 任务级自动召回（默认关）
     guard: true                 # 写入闸门
     installSkills: true         # 会话开始投放技能
     maxInjectTokens: 400        # 会话注入预算
@@ -218,10 +219,10 @@ npm run test:install        # 自动验证 tgz 与 git 两种安装方式
 | 字段 | 默认 | 作用 |
 | --- | --- | --- |
 | `vault` | `null` | `null` = 从会话工作目录向上找 `.pko/` 或 `50-Wiki/` |
-| `trigger` | `true` | 提问时按最新用户消息召回相关知识 |
+| `trigger` | `false` | 提问时按最新用户消息召回相关知识（默认关，需要时打开） |
 | `guard` | `true` | 拦截 `rm` 与 `log.md` 覆写（历史 `.raw/` 目录同样保护） |
 | `installSkills` | `true` | 把随包技能补进 `<vault>/.dsh/skills`（只补缺，不覆盖） |
-| `sessionContext` | `true` | 会话开始时注入 `hot.md` + `north-star`；设 `false` 关闭该注入 |
+| `sessionContext` | `false` | 会话开始时注入 `hot.md` + `north-star`（默认关，需要时打开） |
 | `maxInjectTokens` | `400` | 单次注入预算 |
 
 ---

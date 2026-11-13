@@ -218,11 +218,21 @@ node packages/core/src/cli.ts restore 20261113-015335 --vault ~/你的库
 
 想关掉某一档：
 
+**两档注入默认都是关的**，需要时在 profile 的 `cordis.patch.yml` 里打开：
+
+```yaml
+- id: pko-engine
+  name: '@pko/dsh'
+  config:
+    sessionContext: true   # 会话开始注入 hot.md + north-star
+    trigger: true          # 提问时召回相关页面
+```
+
 | 想要的效果 | 配置 |
 | --- | --- |
-| 不注入会话档（`[知识库] 本工作区有 PKO vault`） | `sessionContext: false` |
-| 不注入任务档（`[知识库提示] 与本任务相关的页面`） | `trigger: false` |
-| 两档都关 | 两个都设 `false` |
+| 默认安静（出厂状态） | 两项都不写 |
+| 只要会话上下文 | `sessionContext: true` |
+| 只要任务召回 | `trigger: true` |
 
 ---
 

@@ -2,7 +2,7 @@
 export interface PkoConfig {
   /** 固定 vault 绝对路径；为空则按会话 cwd 向上查找。 */
   readonly vault?: string
-  /** 是否启用任务级召回，默认 true。 */
+  /** 是否启用任务级召回，默认 false（需要时在 profile patch 里打开）。 */
   readonly trigger?: boolean
   /** 注入预算（token），默认 400。 */
   readonly maxInjectTokens?: number
@@ -10,7 +10,7 @@ export interface PkoConfig {
   readonly guard?: boolean
   /** 会话开始时把随包技能投放到 vault，默认 true。 */
   readonly installSkills?: boolean
-  /** 会话开始时注入 hot.md / north-star 上下文，默认 true。 */
+  /** 会话开始时注入 hot.md / north-star 上下文，默认 false。 */
   readonly sessionContext?: boolean
 }
 
@@ -20,16 +20,16 @@ export interface PkoConfig {
  * @returns 归一化后的配置
  */
 /** 缺省配置：宿主不传 config 时也必须拿到完整默认值。 */
-const DEFAULTS: PkoConfig = { trigger: true, guard: true, installSkills: true, sessionContext: true, maxInjectTokens: 400 }
+const DEFAULTS: PkoConfig = { trigger: false, guard: true, installSkills: true, sessionContext: false, maxInjectTokens: 400 }
 
 export function readConfig(raw: unknown): PkoConfig {
   if (typeof raw !== 'object' || raw === null) return DEFAULTS
   const value = raw as Record<string, unknown>
   const vault = typeof value.vault === 'string' && value.vault.trim() !== '' ? value.vault : undefined
-  const trigger = typeof value.trigger === 'boolean' ? value.trigger : true
+  const trigger = typeof value.trigger === 'boolean' ? value.trigger : false
   const guard = typeof value.guard === 'boolean' ? value.guard : true
   const installSkills = typeof value.installSkills === 'boolean' ? value.installSkills : true
-  const sessionContext = typeof value.sessionContext === 'boolean' ? value.sessionContext : true
+  const sessionContext = typeof value.sessionContext === 'boolean' ? value.sessionContext : false
   const maxInjectTokens = typeof value.maxInjectTokens === 'number' && Number.isFinite(value.maxInjectTokens)
     ? Math.max(50, Math.floor(value.maxInjectTokens))
     : 400

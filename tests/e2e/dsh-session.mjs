@@ -62,6 +62,11 @@ async function prepare(dir) {
     "      name: '@deepseek-ai/dsh-agent-default-model'",
     '      config: { provider: deepseek-account, model: deepseek-flash, reasoningEffort: high }',
     '',
+    '# 两档注入默认关闭，E2E 显式打开以验证注入链路',
+    '- id: pko-engine',
+    "  name: '@pko/dsh'",
+    '  config: { sessionContext: true, trigger: true }',
+    '',
   ].join('\n'))
   return { vault, overlay }
 }

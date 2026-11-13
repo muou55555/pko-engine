@@ -51,10 +51,10 @@ DSH 会自动把 `@pko/dsh` 登记进 `dsh.profile.bundles`，不需要手改配
   name: '@pko/dsh'
   config:
     vault: null            # null = 按会话工作目录向上查找
-    trigger: true          # 任务级召回
+    trigger: false         # 任务级召回（默认关）
     guard: true            # 写入闸门
     installSkills: true    # 会话开始投放到 <vault>/.dsh/skills
-    sessionContext: true   # 会话开始注入 hot.md + north-star
+    sessionContext: false  # 会话开始注入 hot.md + north-star（默认关）
     maxInjectTokens: 400   # 会话注入预算
 ```
 

@@ -71,12 +71,18 @@ test('dsh 插件：每个工具都带 output.render 与 JSON Schema', () => {
   }
 })
 
-test('dsh 插件：订阅会话、任务与写入闸门三个锚点', () => {
+test('dsh 插件：默认只订阅会话与写入闸门（召回默认关闭）', () => {
   const host = makeHost()
   apply(host.ctx as never, {})
   assert.equal(host.handlers.has('agent/created'), true)
-  assert.equal(host.handlers.has('agent/pre-step'), true)
+  assert.equal(host.handlers.has('agent/pre-step'), false, 'trigger 默认关闭时不订阅召回')
   assert.equal(host.handlers.has('tools/pre-execute'), true)
+})
+
+test('dsh 插件：trigger=true 时额外订阅 agent/pre-step', () => {
+  const host = makeHost()
+  apply(host.ctx as never, { trigger: true })
+  assert.equal(host.handlers.has('agent/pre-step'), true)
 })
 
 test('dsh 插件：关掉闸门后不再订阅 pre-execute', () => {
