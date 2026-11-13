@@ -18,3 +18,4 @@ export { estimateTokens, clipToTokens, tokenizeQuery } from "./tokens.js";
 export { retrieve } from "./retrieve.js";
 export { DEFAULT_BUDGET, bodyContext, sessionContext, taskContext } from "./context.js";
 export { createCheckpoint, isGitRepo, listCheckpoints, restoreCheckpoint } from "./checkpoint.js";
+export { SEED_FILES, STANDARD_DIRS, applyScaffold, hasVaultMarker, planScaffold, vaultStatus } from "./scaffold.js";

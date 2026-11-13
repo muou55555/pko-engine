@@ -70,6 +70,8 @@ export async function runDoctor(root: string): Promise<DoctorReport> {
   }
 
   for (const page of pages) {
+    // 索引 / 日志 / 热缓存由引擎维护，不要求 frontmatter，但链接仍会被校验
+    if (META_PATHS.has(page.path)) continue
     if (!page.hasFrontmatter) {
       push('error', 'E_NO_FRONTMATTER', page.path, '缺少 YAML frontmatter', '补齐 --- 围栏块与 id/title/type')
       continue

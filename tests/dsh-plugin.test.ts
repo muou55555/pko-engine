@@ -49,13 +49,13 @@ async function makeVault(): Promise<string> {
   return root
 }
 
-test('dsh 插件：注册 8 个工具且无重名', () => {
+test('dsh 插件：注册 10 个工具且无重名', () => {
   const host = makeHost()
   apply(host.ctx as never, {})
   const names = host.tools.map((tool) => tool.name).sort()
   assert.deepEqual(names, [
-    'pko_capture', 'pko_checkpoint', 'pko_context', 'pko_ingest',
-    'pko_lint', 'pko_normalize', 'pko_query', 'pko_read',
+    'pko_capture', 'pko_checkpoint', 'pko_context', 'pko_ingest', 'pko_init',
+    'pko_lint', 'pko_normalize', 'pko_query', 'pko_read', 'pko_status',
   ])
   assert.equal(new Set(names).size, names.length)
 })
@@ -136,4 +136,54 @@ test('pko_read：id / 文件名 / 相对路径三种写法都能读到', async (
     const page = await read.execute({ id: key }, {})
     assert.equal(page.path, rel, `${key} 应能定位到页面`)
   }
+})
+
+
+/** 用指定 cwd 调一个工具。 */
+async function callTool(host: ReturnType<typeof makeHost>, name: string, args: Record<string, unknown>, cwd: string): Promise<unknown> {
+  const tool = host.tools.find((candidate) => candidate.name === name) as unknown as {
+    execute(args: Record<string, unknown>, exec: unknown): Promise<unknown>
+  }
+  return tool.execute(args, { agent: { session: { header: { cwd } } } })
+}
+
+test('pko_status：非知识库目录也能调用，如实报告', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-novault-'))
+  const status = await callTool(host, 'pko_status', {}, dir) as { isVault: boolean; missingDirs: string[] }
+  assert.equal(status.isVault, false)
+  assert.ok(status.missingDirs.length > 0)
+})
+
+test('pko_init：空目录里初始化出可用的知识库', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-init-'))
+
+  const result = await callTool(host, 'pko_init', {}, dir) as { createdDirs: number; createdFiles: number }
+  assert.ok(result.createdDirs > 0, '应创建目录')
+  assert.ok(result.createdFiles > 0, '应写入种子文件')
+
+  const status = await callTool(host, 'pko_status', {}, dir) as { isVault: boolean; pages: number }
+  assert.equal(status.isVault, true, '初始化后应能识别为知识库')
+  assert.ok(status.pages > 0)
+})
+
+test('pko_init：非空目录需 force，否则给出可操作的报错', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-init-guard-'))
+  await writeFile(join(dir, 'random.txt'), 'x')
+
+  await assert.rejects(() => callTool(host, 'pko_init', {}, dir), /force: true/)
+  const forced = await callTool(host, 'pko_init', { force: true }, dir) as { createdDirs: number }
+  assert.ok(forced.createdDirs > 0)
+})
+
+test('工具在无 vault 时报错会指引初始化', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-novault2-'))
+  await assert.rejects(() => callTool(host, 'pko_lint', {}, dir), /pko_init/)
 })

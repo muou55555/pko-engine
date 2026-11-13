@@ -27,6 +27,7 @@ pko-engine 把这些变成确定性能力：**检索、写入、治理、上下�
 | 增量入库 | contentHash 相同则跳过，重复摄取不产生副本 |
 | 还原点 | 用 git ref 记录快照，创建时不改动工作区 |
 | 自动投放技能 | 插件自带 8 个 `pko-*` 技能，会话开始补进 vault |
+| 一键建库 | `pko init` 生成 PARA + 索引 + 热缓存 + brain 骨架，只补缺不覆盖 |
 | 零宿主依赖 | 产物只 import `node:*`，装着就能跑 |
 
 ## 架构
@@ -81,6 +82,8 @@ npm run build:dsh    # 构建插件产物（含内联 core 与技能）
 CLI（不需要 DSH 也能用）：
 
 ```sh
+node packages/core/src/cli.ts init      --vault ~/your-vault
+node packages/core/src/cli.ts status    --vault ~/your-vault
 node packages/core/src/cli.ts doctor    --vault ~/your-vault
 node packages/core/src/cli.ts query 缓存穿透 --vault ~/your-vault
 node packages/core/src/cli.ts context --vault ~/your-vault --task "接下来做什么"

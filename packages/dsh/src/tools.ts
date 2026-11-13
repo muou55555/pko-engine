@@ -12,6 +12,7 @@ import { readIfExists, atomicWrite } from '../../core/src/store.ts'
 import { sha256 } from '../../core/src/hash.ts'
 import { vaultPaths } from '../../core/src/paths.ts'
 import { createCheckpoint, listCheckpoints, restoreCheckpoint } from '../../core/src/checkpoint.ts'
+import { applyScaffold, planScaffold, vaultStatus } from '../../core/src/scaffold.ts'
 import { join } from 'node:path'
 
 /** 纯文本内容块。 */
@@ -27,7 +28,9 @@ export interface ToolSpec {
   readonly parameters: Record<string, unknown>
   readonly outputSchema: Record<string, unknown>
   render(args: Record<string, unknown>, value: unknown): TextBlock[]
-  run(vault: string, args: Record<string, unknown>): Promise<unknown>
+  /** 是否需要已识别的 vault。false 时 run 收到的是会话工作目录。 */
+  readonly needsVault?: boolean
+  run(root: string, args: Record<string, unknown>): Promise<unknown>
 }
 
 /** 宿主上下文里本插件用到的最小面。 */
@@ -315,6 +318,64 @@ export const TOOL_SPECS: readonly ToolSpec[] = [
       return { pending: pending.length, fixed: pending.length, paths: pending.map((item) => item.original.path) }
     },
   },
+  {
+    name: 'pko_status',
+    description: '检查当前目录是不是 PKO 知识库、缺哪些标准目录、健康度如何。不需要先有知识库。',
+    parameters: { type: 'object', additionalProperties: false, properties: {} },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        isVault: { type: 'boolean' },
+        pages: { type: 'number' },
+        missingDirs: { type: 'array' },
+        findings: { type: 'object' },
+      },
+    },
+    render: (_args, value) => {
+      const status = value as {
+        isVault: boolean
+        pages: number
+        missingDirs: string[]
+        findings: { error: number; warn: number; info: number }
+      }
+      if (!status.isVault) {
+        return text('pko: 当前目录还不是知识库。可以调用 pko_init 初始化，或切换到已有知识库目录。')
+      }
+      const missing = status.missingDirs.length === 0 ? '无' : `${status.missingDirs.length} 个`
+      return text(`pko: 是知识库，${status.pages} 页，${status.findings.error} error / ${status.findings.warn} warn；缺标准目录：${missing}`)
+    },
+    needsVault: false,
+    run: async (root) => vaultStatus(root),
+  },
+  {
+    name: 'pko_init',
+    description: '在当前目录初始化 PKO 知识库骨架（PARA 目录 + 索引 + 热缓存 + brain 记忆层）。只补缺、不覆盖已有文件。',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { force: { type: 'boolean', description: '目录非空且不像知识库时，是否仍然初始化' } },
+    },
+    outputSchema: {
+      type: 'object',
+      properties: { createdDirs: { type: 'number' }, createdFiles: { type: 'number' }, skipped: { type: 'number' } },
+    },
+    render: (_args, value) => {
+      const result = value as { createdDirs: number; createdFiles: number; skipped: number }
+      if (result.createdDirs === 0 && result.createdFiles === 0) return text('pko: 已经是标准结构，无需初始化。')
+      return text(`pko: 已初始化。新建 ${result.createdDirs} 个目录、${result.createdFiles} 个文件（跳过已存在的 ${result.skipped} 项）。
+下一步：读 AGENTS.md 了解写入规范。`)
+    },
+    needsVault: false,
+    run: async (root, args) => {
+      const plan = await planScaffold(root)
+      if (plan.dirs.length === 0 && plan.files.length === 0) return { createdDirs: 0, createdFiles: 0, skipped: plan.existing.length }
+      if (plan.needsForce && args.force !== true) {
+        throw new Error('pko: 当前目录非空且不像知识库。确认要在这里初始化，请传 force: true。')
+      }
+      const result = await applyScaffold(plan, { force: args.force === true })
+      return { createdDirs: result.createdDirs.length, createdFiles: result.createdFiles.length, skipped: result.skipped.length }
+    },
+  },
 ]
 
 /**
@@ -333,8 +394,11 @@ export function mountTools(ctx: ToolHost, config: PkoConfig): () => void {
       output: { schema: spec.outputSchema, render: (args, value) => spec.render(args as Record<string, unknown>, value) },
       execute: async (args, exec) => {
         const cwd = cwdOf(exec)
+        if (spec.needsVault === false) return spec.run(cwd, args)
         const vault = resolveVault(config.vault, cwd)
-        if (vault === undefined) throw new Error('pko: 当前会话目录不在任何 PKO vault 内')
+        if (vault === undefined) {
+          throw new Error('pko: 当前会话目录不在任何 PKO vault 内。可以调用 pko_init 初始化当前目录，或切换到已有知识库目录。')
+        }
         return spec.run(vault, args)
       },
     }))

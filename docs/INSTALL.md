@@ -33,19 +33,36 @@ dsh --version
 
 ### 你的知识库需要有什么
 
-最小的可用结构（没有也能跑，但工具会提示"不在任何 PKO vault 内"）：
+只要有一个 `50-Wiki/` 目录（或 `.pko/`）就能被识别为知识库。引擎不绑定其余目录名。
+
+**还没有库？一条命令生成标准骨架：**
+
+```sh
+node packages/core/src/cli.ts init --vault ~/my-pko-vault
+```
+
+它会生成与参考库一致的结构：
 
 ```
 你的库/
-├── 50-Wiki/          ← 必须有这个目录（vault 识别标记）
-│   ├── index.md      ← 可选，检索的 L1 层
-│   └── hot.md        ← 可选，会话开始时注入的近期上下文
-└── 40-Resources/     ← 可选，知识页默认落点之一
+├── AGENTS.md            ← 给 Agent 的操作手册（目录、写入规范、安全规则）
+├── purpose.md           ← 这个库服务什么
+├── 00-Inbox/            ← 新内容第一落点
+├── 10-Atlas/            ← HOME + moc-work + moc-life 导航
+├── 20-Projects/{work,personal}/
+├── 30-Areas/{work,life}/
+├── 40-Resources/{concepts,how-to,references,clips}/
+├── 50-Wiki/{index,hot,log}.md
+├── 60-Outputs/{articles,weekly-reports,presentations,canvases}/
+├── 70-Calendar/{daily,weekly,monthly}/
+├── 80-Cards/  90-Archive/  _attachments/  _templates/  brain/  .raw/
 ```
 
-已经有 Obsidian 库就直接用，不需要改目录结构。
+- **只补缺**：已存在的目录和文件一律不覆盖，可以反复执行
+- **初始化后体检是 0 error / 0 warning**，可以直接开始写
+- 目录非空又不像知识库时，会要求加 `--force`，避免污染现有项目
 
-还没有库？复制示例库即可：
+也可以复制示例库（内容更少）：
 
 ```sh
 cp -R examples/minimal-vault ~/my-pko-vault
@@ -224,7 +241,7 @@ dsh plugin --profile web remove @pko/dsh
 | --- | --- | --- |
 | `N entry did not activate` + `@pko/dsh` | 产物没构建 | `npm run build:dsh` 后重启 |
 | `Cannot find package '@pko/dsh'` | 路径写错或用了相对路径 | 用绝对路径重新 `dsh plugin add` |
-| 工具报 `当前会话目录不在任何 PKO vault 内` | 会话目录不在库里 | 在知识库根目录开会话，或配置 `vault` |
+| 工具报 `当前会话目录不在任何 PKO vault 内` | 会话目录不在库里 | 在该目录跑 `pko init`，或切到知识库目录开会话 |
 | 技能没出现在 `/` 菜单 | 没重启，或 vault 没识别 | 重启 DSH；确认 `<vault>/.dsh/skills` 存在 |
 | 模型改 `.raw/` 没被拦 | `guard: false`，或会话目录不在库内 | 检查配置；确认 vault 被识别 |
 | `headless` 跑不起来、提示缺少凭据 | headless 默认只带 `llm-deepseek-account` | 见下方"用 headless 跑自动化" |

@@ -18,7 +18,7 @@ DSH 会自动把 `@pko/dsh` 登记进 `dsh.profile.bundles`，不需要手改配
 
 ## 能力
 
-### 8 个工具
+### 10 个工具
 
 | 工具 | 作用 |
 | --- | --- |
@@ -29,6 +29,8 @@ DSH 会自动把 `@pko/dsh` 登记进 `dsh.profile.bundles`，不需要手改配
 | `pko_ingest` | 批量写入，contentHash 增量跳过 |
 | `pko_lint` | 健康检查（缺字段 / 断链 / 孤儿页 / 重复 id） |
 | `pko_normalize` | 补齐 frontmatter（默认只报告） |
+| `pko_status` | 检查目录是不是知识库、缺什么 |
+| `pko_init` | 初始化知识库骨架（只补缺，不覆盖） |
 | `pko_checkpoint` | 还原点：create / list / restore（git ref） |
 
 ### 3 个事件锚点

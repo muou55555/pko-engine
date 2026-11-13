@@ -36,3 +36,6 @@ export { DEFAULT_BUDGET, bodyContext, sessionContext, taskContext } from './cont
 
 export type { Checkpoint } from './checkpoint.ts'
 export { createCheckpoint, isGitRepo, listCheckpoints, restoreCheckpoint } from './checkpoint.ts'
+
+export type { ScaffoldPlan, ScaffoldResult, VaultStatus } from './scaffold.ts'
+export { SEED_FILES, STANDARD_DIRS, applyScaffold, hasVaultMarker, planScaffold, vaultStatus } from './scaffold.ts'

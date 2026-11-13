@@ -5,6 +5,7 @@ import type { DoctorReport, Severity } from './types.ts'
 import { bodyContext, sessionContext, taskContext } from './context.ts'
 import { createCheckpoint, listCheckpoints, restoreCheckpoint } from './checkpoint.ts'
 import { runDoctor } from './doctor.ts'
+import { applyScaffold, planScaffold, vaultStatus } from './scaffold.ts'
 import { runHook } from './hook.ts'
 import { acquireLock } from './lock.ts'
 import { extraFields, normalizePage, renderPage } from './normalize.ts'
@@ -18,6 +19,8 @@ import { appendLogLine, stamp } from './writer.ts'
 const USAGE = `pko — PKO 知识引擎 CLI
 
 用法：
+  pko init        --vault <路径> [--dry-run] [--force]   初始化知识库骨架
+  pko status      --vault <路径> [--json]                体检：是不是库、缺什么
   pko doctor    --vault <路径> [--json]
   pko normalize --vault <路径> [--apply]
   pko query <词> --vault <路径> [--json] [--mode auto|index-only] [--max N] [--deep]
@@ -28,6 +31,8 @@ const USAGE = `pko — PKO 知识引擎 CLI
   pko hook        [--vault <路径>]      从 stdin 读取宿主事件 JSON
 
 命令：
+  init       初始化知识库目录骨架（只补缺，不覆盖）
+  status     体检目录：是否知识库、缺少哪些标准目录、健康度
   doctor     审计 vault：frontmatter / 断链 / 孤儿页 / 重复 id
   normalize  补齐缺失的 frontmatter 字段（默认 dry-run）
   query      分层检索：index → 标题/标签/摘要 → 正文 → 双链邻居
@@ -48,6 +53,8 @@ interface Args {
   readonly apply: boolean
   readonly deep: boolean
   readonly mode: 'auto' | 'index-only'
+  readonly dryRun: boolean
+  readonly force: boolean
   readonly max: number
   readonly task: string | undefined
   readonly page: string | undefined
@@ -64,6 +71,8 @@ function parseArgs(argv: readonly string[]): Args {
   let json = false
   let apply = false
   let deep = false
+  let dryRun = false
+  let force = false
   let mode: 'auto' | 'index-only' = 'auto'
   let max = 10
   let task: string | undefined
@@ -94,11 +103,13 @@ function parseArgs(argv: readonly string[]): Args {
     if (arg === '--apply') { apply = true; continue }
     if (arg === '--dry-run') { apply = false; continue }
     if (arg === '--deep') { deep = true; continue }
+    if (arg === '--dry-run') { dryRun = true; continue }
+    if (arg === '--force') { force = true; continue }
     if (arg === '--help' || arg === '-h') { process.stdout.write(USAGE); process.exit(0) }
     if (command === '') { command = arg; continue }
     positional.push(arg)
   }
-  return { command, positional, vault, json, apply, deep, mode, max, task, page }
+  return { command, positional, vault, json, apply, deep, mode, max, task, page, dryRun, force }
 }
 
 /** 读取 stdin 全部内容；TTY 下返回空串。 */
@@ -238,6 +249,54 @@ async function runHookCommand(vault: string): Promise<number> {
   return outcome.exit
 }
 
+/**
+ * init 子命令：初始化知识库骨架。
+ * @param args 解析后的参数
+ * @returns 退出码
+ */
+async function runInit(args: Args): Promise<number> {
+  const root = resolve(args.vault)
+  const plan = await planScaffold(root)
+  if (plan.dirs.length === 0 && plan.files.length === 0) {
+    process.stdout.write(`pko: ${root} 已经是标准结构，无需初始化\n`)
+    return 0
+  }
+  if (args.dryRun) {
+    for (const dir of plan.dirs) process.stdout.write(`mkdir  ${dir}/\n`)
+    for (const file of plan.files) process.stdout.write(`write  ${file}\n`)
+    process.stdout.write(`\npko: 将创建 ${plan.dirs.length} 个目录、${plan.files.length} 个文件（dry-run）\n`)
+    return 0
+  }
+  const result = await applyScaffold(plan, { force: args.force })
+  process.stdout.write(`pko: 已初始化 ${root}\n`)
+  process.stdout.write(`  目录 ${result.createdDirs.length} 个，文件 ${result.createdFiles.length} 个，跳过 ${result.skipped.length} 项\n`)
+  if (result.createdFiles.length > 0) process.stdout.write(`  种子文件：${result.createdFiles.join(', ')}\n`)
+  return 0
+}
+
+/**
+ * status 子命令：体检目录。
+ * @param args 解析后的参数
+ * @returns 退出码
+ */
+async function runStatus(args: Args): Promise<number> {
+  const status = await vaultStatus(resolve(args.vault))
+  if (args.json) {
+    process.stdout.write(`${JSON.stringify(status, null, 2)}\n`)
+    return 0
+  }
+  process.stdout.write(`${status.root}\n`)
+  process.stdout.write(`  是知识库：${status.isVault ? '是' : '否（运行 pko init 初始化）'}\n`)
+  process.stdout.write(`  页面数：${status.pages}\n`)
+  process.stdout.write(`  git 仓库：${status.git ? '是' : '否'}\n`)
+  process.stdout.write(`  缺标准目录：${status.missingDirs.length === 0 ? '无' : `${status.missingDirs.length} 个（${status.missingDirs.slice(0, 5).join(', ')}${status.missingDirs.length > 5 ? ' …' : ''}）`}\n`)
+  if (status.isVault) {
+    const { error, warn, info } = status.findings
+    process.stdout.write(`  健康度：${error} error / ${warn} warn / ${info} info\n`)
+  }
+  return 0
+}
+
 // ---- 主流程 ----
 const args = parseArgs(process.argv.slice(2))
 if (args.command === '') {
@@ -259,6 +318,8 @@ try {
     else printReport(report)
     process.exit(report.counts.error > 0 ? 1 : 0)
   }
+  if (args.command === 'init') process.exit(await runInit(args))
+  if (args.command === 'status') process.exit(await runStatus(args))
   if (args.command === 'normalize') process.exit(await runNormalize(args.vault, args.apply))
   if (args.command === 'checkpoint') {
     const checkpoint = await createCheckpoint(resolve(args.vault))
