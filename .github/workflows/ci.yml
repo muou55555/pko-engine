@@ -28,6 +28,8 @@ jobs:
         run: pnpm run typecheck
       - name: 构建插件产物
         run: pnpm run build:dsh
+      - name: 打包内容校验
+        run: pnpm run check:pack
       - name: 产物不得依赖宿主包
         run: |
           if grep -rE "from ['\"]@deepseek-ai" packages/dsh/lib --include='*.js'; then

@@ -49,3 +49,15 @@
 ```sh
 npm run test:e2e
 ```
+
+## 另一个脚本：安装方式验证
+
+`install-methods.mjs` 验证两种免 registry 安装路径：
+
+```sh
+node tests/e2e/install-methods.mjs                    # tgz + git 都测
+node tests/e2e/install-methods.mjs --mode tgz
+node tests/e2e/install-methods.mjs --mode git --repo https://github.com/<你>/pko-engine.git
+```
+
+每种方式：建一次性 profile → 安装 → 真实会话调用 `pko_lint` → 检查 8 个技能投放 → 清理。
