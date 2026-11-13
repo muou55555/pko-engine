@@ -142,7 +142,14 @@ packages/skills/*/SKILL.md   →  packages/dsh/lib/dsh/skills/*/SKILL.md
 
 ---
 
-## 七、测试为什么串行跑
+## 七、提交与发布
+
+- 日常改动：本地 `git commit` 即可，**不推送、不打 tag**
+- 只有用户明确说"推到 GitHub / 发版"时，才执行 `git push` + `git tag` + `gh release create`
+
+发版流程见 `AGENTS.md` 的「发布流程」一节。
+
+## 八、测试为什么串行跑
 
 `npm test` 带 `--test-concurrency=1`。原因不是慢，是**确定性**：
 
@@ -162,7 +169,7 @@ npm run test:parallel
 node --test tests/<某个文件>.test.ts
 ```
 
-## 八、提交前
+## 九、提交前
 
 ```sh
 npm run test:all     # 测试 + 代码卫生 + 类型检查
