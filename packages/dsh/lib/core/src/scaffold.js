@@ -54,7 +54,6 @@ export const STANDARD_DIRS = [
     '_attachments/pdfs/canvas',
     '_templates',
     'brain',
-    '.raw',
 ];
 /** 种子文件：只在缺失时写入。 */
 const CORE_SEEDS = {
@@ -84,7 +83,6 @@ const CORE_SEEDS = {
 brain/             记忆层（north-star / about-me / key-decisions / patterns / memories）
 _templates/        Obsidian 模板
 _attachments/      附件（images/ pdfs/，画布素材在各自 canvas/ 下）
-.raw/              原始文件存档，摄取后不可修改
 \`\`\`
 
 ## 每次会话必须执行的初始化
@@ -112,7 +110,7 @@ _attachments/      附件（images/ pdfs/，画布素材在各自 canvas/ 下）
 
 | 内容 | 目标 |
 | --- | --- |
-| 新技术资料 | 原始存 \`.raw/YYYY-MM-DD-<标题>.md\`，蒸馏页进 \`50-Wiki/<主题>.md\` |
+| 新技术资料 | 原件存 \`00-Inbox/YYYY-MM-DD-<标题>.md\`，蒸馏页进 \`50-Wiki/<主题>.md\` |
 | 技术方案 / 操作步骤 | \`40-Resources/how-to/\` |
 | 概念 / 原理 | \`40-Resources/concepts/\` + \`80-Cards/\` |
 | 工作决策 | \`20-Projects/work/<项目>/\` |
@@ -120,12 +118,12 @@ _attachments/      附件（images/ pdfs/，画布素材在各自 canvas/ 下）
 | 量化 | \`30-Areas/work/quant/\` |
 | 生活类 | \`30-Areas/life/<子目录>/\` |
 
-新材料一律先落 \`00-Inbox/\`，摄取完成后原始件归档进 \`.raw/\`。
+新材料与原件都放 \`00-Inbox/\`：摄取后原件**留在原地**，不改、不删、不移动。
 
 ## 安全规则
 
 - **永不删除文件**，只归档到 \`90-Archive/\`
-- \`.raw/\` 中的原始材料摄取后不可修改（可以写新文件，不能改旧的）
+- \`00-Inbox/\` 中的原件摄取后不再修改；需要加工的内容写到目标目录，不要改原件
 - \`50-Wiki/log.md\` 只追加，禁止整体覆写
 - 不静默覆盖：发现矛盾内容用 \`> ⚠️ 待确认：…\` 标注
 - 写 \`[[链接]]\` 前先确认目标文件存在，不写死链

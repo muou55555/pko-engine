@@ -49,7 +49,7 @@ created / updated
 | `manifest.json` | 来源 → contentHash → 产出页面（增量去重） |
 | `activity.json` | 最近一次写入时间（判断 hot.md 是否需要刷新） |
 
-`.pko/`、`.raw/` 都是点目录，Obsidian 默认不索引。
+`.pko/` 是点目录，Obsidian 默认不索引。历史版本曾用 `.raw/` 存放原件，现已改为存放在 `00-Inbox/`。
 
 ---
 

@@ -39,7 +39,7 @@ DSH 会自动把 `@pko/dsh` 登记进 `dsh.profile.bundles`，不需要手改配
 | --- | --- |
 | `agent/created` | 投放随包技能 + 注入 `hot.md` 与 north-star |
 | `agent/pre-step` | 按**最新一条用户消息**召回相关知识（同一任务不重复注入） |
-| `tools/pre-execute` | 写入治理：`.raw/` 不可改、`log.md` 只追加、`rm` 拦截 |
+| `tools/pre-execute` | 写入治理：`log.md` 只追加、`rm` 拦截（历史 `.raw/` 目录仍受保护） |
 
 > 为什么写闸门不用 `fs/write-intent`：那个 seam 的返回值是版本守卫，
 > `undefined` 表示无条件写入，**没有拒绝语义**。硬拦截只能走 `tools/pre-execute`。

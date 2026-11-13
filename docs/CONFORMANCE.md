@@ -26,7 +26,7 @@
 | `brain/` | 记忆层 | `/pko-daily` 读 north-star、`/pko-wrap-up` 更新 memories 等 |
 | `_templates/` | Obsidian 模板（8 套） | `pko init` 生成，技能写入时按模板结构落内容 |
 | `_attachments/` | 附件（images/pdfs，各有 canvas 子目录） | `/pko-canvas` 引用 |
-| `.raw/` | 原始材料存档 | `/pko-ingest` 把原件写成 `YYYY-MM-DD-<标题>.md`；此后不可修改 |
+| `00-Inbox/` | 新材料第一落点 + 原件存放 | 用户投放、`/pko-ingest` 把原件存成 `YYYY-MM-DD-<标题>.md`；摄取后原地保留、不改不删 |
 
 ---
 
@@ -35,7 +35,7 @@
 | pko-vault 命令 | pko-engine 技能 | 业务行为 |
 | --- | --- | --- |
 | `/daily-start` | `/pko-daily` | 读 north-star + hot → 准备今日日记 → 待办 → Inbox → 活跃项目 → 3 条建议 |
-| `/ingest` | `/pko-ingest` | 取来源（或 Inbox）→ 原件存 `.raw/` → 判类型 → 蒸馏成页 → 更新 index/MOC → 质量标准 |
+| `/ingest` | `/pko-ingest` | 取来源（或 Inbox）→ 原件存 `00-Inbox/` → 判类型 → 蒸馏成页 → 更新 index/MOC → 质量标准 |
 | `/save` | `/pko-save` | 识别内容 → 按路由表落到固定目录 → 更新 MOC → 追加今日日记 → 更新 log/hot |
 | `/wiki-query` | `/pko-query` | hot → index → HOME → MOC → 具体页；带来源；查不到明说 |
 | `/weekly-digest` | `/pko-weekly` | 本周日记 + 项目 + log 新增 → 对外版与个人版 → `60-Outputs/weekly-reports/` 与 `70-Calendar/weekly/` |
@@ -49,8 +49,8 @@
 
 | 约定 | 参考库 | 本引擎 |
 | --- | --- | --- |
-| 原始材料落点 | 新内容进 `00-Inbox/`；摄取时原件存 `.raw/` | **相同**：技能步骤 1–2 明确要求 |
-| `.raw/` 不可修改 | 约定 | **强制**：`tools/pre-execute` 拒绝编辑；可写新文件 |
+| 原始材料落点 | 新内容与原件统一放 `00-Inbox/` | **相同**：技能步骤 1–2 明确要求；不使用 `.raw/` |
+| 原件不可修改 | 约定 | `00-Inbox` 中原件由技能约束不改；历史 `.raw/` 仍被闸门强制拦截 |
 | 日志只追加 | `log.md` append-only | **强制**：拒绝整体覆写 |
 | 永不删除 | 只归档到 `90-Archive/` | **强制**：含 `rm` 的命令被拦 |
 | 文件命名 | 日记/周记/月记/项目/卡片/MOC/会议各有格式 | 写进 `AGENTS.md` 种子与技能 |

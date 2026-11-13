@@ -14,7 +14,7 @@
 - 输入 `/pko-daily`、`/pko-query` 这类命令
 - 让模型查知识库（它会自动调用 `pko_query`）
 - 会话开始时自动带上你的近期上下文（`hot.md`）
-- 模型想改 `.raw/` 里的原始材料时被拦下来
+- 模型想删除文件、覆写操作日志时被拦下来
 
 ---
 
@@ -58,7 +58,7 @@ node packages/core/src/cli.ts init --vault ~/my-pko-vault
 ├── 50-Wiki/{index,hot,log}.md
 ├── 60-Outputs/{articles,weekly-reports,presentations,canvases}/
 ├── 70-Calendar/{daily,weekly,monthly}/
-├── 80-Cards/  90-Archive/  _attachments/  _templates/  brain/  .raw/
+├── 80-Cards/  90-Archive/  _attachments/  _templates/  brain/
 ```
 
 - **只补缺**：已存在的目录和文件一律不覆盖，可以反复执行
@@ -219,7 +219,7 @@ npm run test:install        # 自动验证 tgz 与 git 两种安装方式
 | --- | --- | --- |
 | `vault` | `null` | `null` = 从会话工作目录向上找 `.pko/` 或 `50-Wiki/` |
 | `trigger` | `true` | 提问时按最新用户消息召回相关知识 |
-| `guard` | `true` | 拦截对 `.raw/` 的修改、`rm`、`log.md` 覆写 |
+| `guard` | `true` | 拦截 `rm` 与 `log.md` 覆写（历史 `.raw/` 目录同样保护） |
 | `installSkills` | `true` | 把随包技能补进 `<vault>/.dsh/skills`（只补缺，不覆盖） |
 | `initPrompt` | `true` | 会话目录不是知识库时，提示用户可初始化（会先要求确认目录） |
 | `maxInjectTokens` | `400` | 单次注入预算 |
@@ -244,7 +244,7 @@ dsh plugin --profile web remove @pko/dsh
 | `Cannot find package '@pko/dsh'` | 路径写错或用了相对路径 | 用绝对路径重新 `dsh plugin add` |
 | 工具报 `当前会话目录不在任何 PKO vault 内` | 会话目录不在库里 | 在该目录跑 `pko init`，或切到知识库目录开会话 |
 | 技能没出现在 `/` 菜单 | 没重启，或 vault 没识别 | 重启 DSH；确认 `<vault>/.dsh/skills` 存在 |
-| 模型改 `.raw/` 没被拦 | `guard: false`，或会话目录不在库内 | 检查配置；确认 vault 被识别 |
+| 模型能删文件 / 覆写日志 | `guard: false`，或会话目录不在库内 | 检查配置；确认 vault 被识别 |
 | `headless` 跑不起来、提示缺少凭据 | headless 默认只带 `llm-deepseek-account` | 见下方"用 headless 跑自动化" |
 
 ### 用 headless 跑自动化

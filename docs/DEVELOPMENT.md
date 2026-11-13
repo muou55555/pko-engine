@@ -107,7 +107,7 @@ dsh --profile headless --patch account.yml --json "用 pko_lint 检查知识库�
 | --- | --- |
 | `agent/created`（会话注入 + 投技能） | `<vault>/.dsh/skills/` 出现 8 个目录 |
 | `agent/pre-step`（任务召回） | 模型回答里引用了库内容，且没有反复重复 |
-| `tools/pre-execute`（写入闸门） | 让模型改 `.raw/`，文件字节级未变 |
+| `tools/pre-execute`（写入闸门） | 让模型覆写 `50-Wiki/log.md`，文件未被覆盖 |
 
 ### 4. 日志
 

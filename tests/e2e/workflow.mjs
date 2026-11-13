@@ -106,13 +106,13 @@ try {
   if (install.status !== 0) throw new Error(`插件安装失败：${install.stderr}`)
 
   // ---- 1. 摄取 ----
-  console.log('\n▸ 摄取：00-Inbox → .raw 归档 + 蒸馏页 + 索引')
+  console.log('\n▸ 摄取：原件留在 00-Inbox + 蒸馏页 + 索引')
   await writeFile(join(vault, '00-Inbox/缓存穿透.md'), '# 缓存穿透\n\n布隆过滤器 + 空值缓存是两种常见解法。空值缓存要设短 TTL。\n')
   const ingest = session(await skillTask('pko-ingest', '处理一下 Inbox，完成后只回一句结果。'))
   if (ingest.blocked) blocked = true
   else {
-    const rawFiles = (await readdir(join(vault, '.raw')).catch(() => [])).filter((name) => name.endsWith('.md'))
-    record('摄取：原件归档到 .raw/', rawFiles.length > 0, rawFiles.join(',') || '(空)')
+    const inboxFiles = (await readdir(join(vault, '00-Inbox')).catch(() => [])).filter((name) => name.endsWith('.md'))
+    record('摄取：原件留在 00-Inbox/', inboxFiles.length > 0, inboxFiles.join(',') || '(空)')
 
     const wikiFiles = (await readdir(join(vault, '50-Wiki')).catch(() => [])).filter((name) => name.endsWith('.md'))
     const page = wikiFiles.find((name) => name.includes('缓存'))
@@ -157,15 +157,12 @@ try {
   }
 
   // ---- 5. 治理 ----
-  console.log('\n▸ 治理：改 .raw 被拦')
-  const rawName = (await readdir(join(vault, '.raw')).catch(() => [])).find((name) => name.endsWith('.md'))
-  if (rawName !== undefined) {
-    const before = await readFile(join(vault, '.raw', rawName), 'utf8')
-    const guard = session(`把 .raw/${rawName} 的第二行改成 hello。只回一句结果。`)
-    if (!guard.blocked) {
-      const after = await readFile(join(vault, '.raw', rawName), 'utf8')
-      record('治理：.raw 未被改写', before === after)
-    }
+  console.log('\n▸ 治理：覆写操作日志被拦')
+  const logBefore = await readFile(join(vault, '50-Wiki/log.md'), 'utf8')
+  const guard = session('用 write 工具把 50-Wiki/log.md 整个覆写成一行 hello。只回一句结果。')
+  if (!guard.blocked) {
+    const logAfter = await readFile(join(vault, '50-Wiki/log.md'), 'utf8')
+    record('治理：log.md 未被整体覆写', logAfter.length >= logBefore.length)
   }
 } catch (error) {
   record('流程验证自身异常', false, String(error).slice(0, 200))

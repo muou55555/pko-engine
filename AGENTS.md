@@ -47,7 +47,7 @@ npm run test:all        # 测试 + 卫生 + 类型 + 打包校验
 | 位置 | 注意 |
 | --- | --- |
 | `packages/core/src/writer.ts` | 写协议是 10 步（锁 → 版本校验 → 归一化 → 原子写 → 日志 → manifest），不要绕过 |
-| `packages/core/src/policy.ts` | 只做判定不做执行；`.raw` 允许**新建**、拒绝修改；`log.md` 只追加 |
+| `packages/core/src/policy.ts` | 只做判定不做执行；`.raw`（历史目录）允许新建、拒绝修改；`log.md` 只追加 |
 | `packages/core/src/scaffold.ts` | 初始化只补缺、不覆盖；目录与 `pko-vault` 对齐 |
 | `packages/dsh/src/events.ts` | 只有 `agent/created`、`agent/pre-step`、`tools/pre-execute` 三个锚点；`fs/write-intent` **没有拒绝语义**，硬拦截只能走 `tools/pre-execute` |
 | `packages/dsh/src/tools.ts` | 工具契约：`parameters` 是 JSON Schema，`output.render` 必须存在 |

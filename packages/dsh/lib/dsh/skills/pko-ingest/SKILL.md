@@ -1,6 +1,6 @@
 ---
 name: pko-ingest
-description: 知识摄取：把外部资料或 Inbox 里的文件处理成知识页并归档原始材料
+description: 知识摄取：把外部资料或 Inbox 里的文件处理成知识页，原件留在 00-Inbox
 user-invocable: true
 disable-model-invocation: true
 ---
@@ -13,19 +13,17 @@ disable-model-invocation: true
 
 1. **确定来源**
    - **没给来源** → 处理 Inbox：`glob 00-Inbox/*`，列出所有文件（跳过子目录），
-     逐个走完步骤 2–7，然后把原件存档并从 Inbox 删除：
-     ```
-     写 .raw/YYYY-MM-DD-<原名>（原件内容，不修改）
-     bash: mv "00-Inbox/<原名>" "90-Archive/已摄取-<原名>"   # 或直接删除原件；保守做法是归档
-     ```
+     逐个走完步骤 2–7。**原件留在 00-Inbox 原地**，不要移动、不要删除；
+     需要区分是否处理过，可以给它加日期前缀（在 00-Inbox 内重命名）。
      Inbox 为空 → 告知用户并结束。
    - **URL**（http 开头，不以 .md 结尾）→ `web_fetch` 抓取
    - **URL（.md 结尾）** → 直接 `web_fetch`，已是 Markdown
    - **本地文件路径** → `read`
    - **粘贴文本** → 直接使用
 
-2. **保存原始**：把原始内容写到 `.raw/YYYY-MM-DD-<标题>.md`，一字不改。
-   `.raw/` 里的文件**摄取后不可修改**（闸门会拦 edit；新文件名可以写）。
+2. **保存原件**：原始内容存到 `00-Inbox/YYYY-MM-DD-<标题>.md`，一字不改。
+   来源本来就是 Inbox 文件的，**原地保留**，不要移动或删除。
+   摄取完成后原件不再修改；要加工就从原件读出来写到目标目录。
 
 3. **判断类型**
    | 类型 | 提取什么 | 目标目录 |

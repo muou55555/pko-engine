@@ -29,7 +29,7 @@
 | 命令 | 对应 pko-vault 命令 | 做什么 | 什么时候用 |
 | --- | --- | --- | --- |
 | `/pko-daily` | `/daily-start` | 读 north-star 与 hot、准备今日日记、列待办与 Inbox、给 3 条建议 | 每天开工 |
-| `/pko-ingest` | `/ingest` | 取来源（或处理 Inbox）→ 原件存 `.raw/` → 蒸馏成页 → 更新索引与 MOC | 看到好文章/论文 |
+| `/pko-ingest` | `/ingest` | 取来源（或处理 Inbox）→ 原件存 `00-Inbox/` → 蒸馏成页 → 更新索引与 MOC | 看到好文章/论文 |
 | `/pko-save` | `/save` | 按内容类型路由到固定目录 → 更新 MOC → 追加今日日记 | 聊出结论后 |
 | `/pko-query` | `/wiki-query` | hot → index → HOME → MOC → 具体页，带来源回答 | 想查自己的积累 |
 | `/pko-weekly` | `/weekly-digest` | 生成本周周报（对外版 + 个人版），归档到产出与日历 | 周五/周日 |
@@ -62,7 +62,7 @@
 ```
 新材料 → 00-Inbox/（第一落点）
    ↓ /pko-ingest
-原件 → .raw/YYYY-MM-DD-<标题>.md（一字不改，此后不可修改）
+原件 → 00-Inbox/YYYY-MM-DD-<标题>.md（一字不改，留在原地）
 蒸馏页 → 50-Wiki/<主题>.md 或 40-Resources/...
 索引 → 50-Wiki/index.md 与 10-Atlas/moc-*.md 加链接
 日志 → 50-Wiki/log.md 自动追加
@@ -202,7 +202,7 @@ node packages/core/src/cli.ts restore 20261113-015335 --vault ~/你的库
 
 | 规则 | 执行方式 |
 | --- | --- |
-| `.raw/` 里的原始材料不可修改 | 编辑被拒绝；写同名新文件也被拒绝 |
+| 原件（`00-Inbox` 里的原始文件）不被改写 | 技能约束：加工内容写到目标目录 |
 | `50-Wiki/log.md` 只追加 | 整体覆写被拒绝，改用追加 |
 | 永不删除，只归档 | 含 `rm` 的命令被拦截，提示改成 `mv <file> 90-Archive/` |
 | frontmatter 必须完整 | 写入时自动补齐 title/type/created/summary |
@@ -267,8 +267,8 @@ A：会话工作目录不在库内。在库根目录开会话，或配置 `vault
 **Q：技能没出现在 `/` 菜单？**
 A：先重启 DSH；再确认 `<库>/.dsh/skills/` 有 8 个目录。没有的话让模型跑一次会话即可触发投放。
 
-**Q：模型改不了 `.raw/`，但我确实想改？**
-A：这是设计。把内容从 `.raw/` 读出来写到 `40-Resources/` 等目标路径。原始材料保持不变是刻意的。
+**Q：我想改原件怎么办？**
+A：不要改。把内容读出来写到 `40-Resources/` 等目标路径；原件保持原样是刻意的。
 
 **Q：想关掉自动召回？**
 A：配置 `trigger: false`。工具仍然可用，只是不再自动提示。
