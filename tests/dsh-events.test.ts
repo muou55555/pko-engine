@@ -76,7 +76,7 @@ test('vault 解析：完全不在库内时返回 undefined', async () => {
 })
 
 test('配置：缺省值正确，非法值被收敛', () => {
-  assert.deepEqual(readConfig(undefined), { trigger: true, guard: true, installSkills: true, maxInjectTokens: 400 })
+  assert.deepEqual(readConfig(undefined), { trigger: true, guard: true, installSkills: true, sessionContext: true, maxInjectTokens: 400 })
   const parsed = readConfig({ vault: '  ', trigger: 'no', guard: 1, installSkills: false, maxInjectTokens: 10 })
   assert.equal(parsed.vault, undefined, '空字符串不应当作路径')
   assert.equal(parsed.trigger, true, '非布尔值回落默认')
@@ -225,3 +225,23 @@ test('事件：已经是知识库时不注入初始化提示', async () => {
   assert.equal(injected.some((item) => item.includes('不是 PKO 知识库')), false)
 })
 
+
+
+test('事件：sessionContext=false 时不注入会话上下文，但技能照常投放', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, { sessionContext: false })
+  const dir = await mkdtemp(join(tmpdir(), 'pko-nocontext-'))
+  await mkdir(join(dir, '50-Wiki'), { recursive: true })
+  await writeFile(join(dir, '50-Wiki/hot.md'), '# Hot\n\n内容\n')
+  const injected: string[] = []
+  const agent = {
+    inject: (message: unknown) => { injected.push(textOf(message)) },
+    session: { header: { cwd: dir } },
+  }
+  const handler = host.handlers.get('agent/created') as (payload: unknown) => Promise<unknown>
+  await handler({ agent })
+
+  assert.equal(injected.length, 0, '不应注入会话上下文')
+  const skills = await (await import('node:fs/promises')).readdir(join(dir, '.dsh/skills')).catch(() => [])
+  assert.equal(skills.length, 9, '技能仍应被投放')
+})

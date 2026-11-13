@@ -10,6 +10,8 @@ export interface PkoConfig {
   readonly guard?: boolean
   /** 会话开始时把随包技能投放到 vault，默认 true。 */
   readonly installSkills?: boolean
+  /** 会话开始时注入 hot.md / north-star 上下文，默认 true。 */
+  readonly sessionContext?: boolean
 }
 
 /**
@@ -18,7 +20,7 @@ export interface PkoConfig {
  * @returns 归一化后的配置
  */
 /** 缺省配置：宿主不传 config 时也必须拿到完整默认值。 */
-const DEFAULTS: PkoConfig = { trigger: true, guard: true, installSkills: true, maxInjectTokens: 400 }
+const DEFAULTS: PkoConfig = { trigger: true, guard: true, installSkills: true, sessionContext: true, maxInjectTokens: 400 }
 
 export function readConfig(raw: unknown): PkoConfig {
   if (typeof raw !== 'object' || raw === null) return DEFAULTS
@@ -27,8 +29,9 @@ export function readConfig(raw: unknown): PkoConfig {
   const trigger = typeof value.trigger === 'boolean' ? value.trigger : true
   const guard = typeof value.guard === 'boolean' ? value.guard : true
   const installSkills = typeof value.installSkills === 'boolean' ? value.installSkills : true
+  const sessionContext = typeof value.sessionContext === 'boolean' ? value.sessionContext : true
   const maxInjectTokens = typeof value.maxInjectTokens === 'number' && Number.isFinite(value.maxInjectTokens)
     ? Math.max(50, Math.floor(value.maxInjectTokens))
     : 400
-  return { ...(vault === undefined ? {} : { vault }), trigger, guard, installSkills, maxInjectTokens }
+  return { ...(vault === undefined ? {} : { vault }), trigger, guard, installSkills, sessionContext, maxInjectTokens }
 }

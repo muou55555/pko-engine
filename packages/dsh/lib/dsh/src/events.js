@@ -105,6 +105,8 @@ export function mountEvents(ctx, config) {
                     ctx.logger?.warn?.(`[pko] 技能投放失败：${String(error)}`);
                 }
             }
+            if (config.sessionContext === false)
+                return;
             const context = await sessionContext(vault, { maxTokens: config.maxInjectTokens });
             if (context === undefined)
                 return;

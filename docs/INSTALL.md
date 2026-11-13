@@ -221,6 +221,7 @@ npm run test:install        # 自动验证 tgz 与 git 两种安装方式
 | `trigger` | `true` | 提问时按最新用户消息召回相关知识 |
 | `guard` | `true` | 拦截 `rm` 与 `log.md` 覆写（历史 `.raw/` 目录同样保护） |
 | `installSkills` | `true` | 把随包技能补进 `<vault>/.dsh/skills`（只补缺，不覆盖） |
+| `sessionContext` | `true` | 会话开始时注入 `hot.md` + `north-star`；设 `false` 关闭该注入 |
 | `maxInjectTokens` | `400` | 单次注入预算 |
 
 ---
