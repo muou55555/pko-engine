@@ -26,7 +26,8 @@
     "dev:dsh": "node scripts/dev-dsh.mjs",
     "check:pack": "node scripts/check-pack.mjs",
     "test:parallel": "node --test tests/*.test.ts",
-    "test:workflow": "node tests/e2e/workflow.mjs"
+    "test:workflow": "node tests/e2e/workflow.mjs",
+    "dev:info": "bash scripts/plugin-version.sh"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

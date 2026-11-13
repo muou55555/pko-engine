@@ -76,7 +76,30 @@ console.log(await m.retrieve('/绝对路径/你的库', '缓存穿透'))
 
 ---
 
-## 四、调试清单
+## 四、先看插件状态
+
+```sh
+npm run dev:info                    # 默认看 web profile
+npm run dev:info -- --profile headless
+```
+
+输出示例：
+
+```
+@pko/dsh 开发状态（profile: web）
+  安装方式  link:/…/packages/dsh（版本 0.1.1）
+  link 目标 /…/packages/dsh ✓
+  源码 HEAD 9a8fdbb（main）未提交改动：2 个文件
+  构建     ✓ 与源码一致
+  提示     重编译后仍需重启 DSH 才生效（不热加载插件代码）
+```
+
+退出码：`0` 就绪、`1` 构建落后于源码、`2` 未安装或链接失效。
+
+它解决的是开发期最常见的一类困惑——**"我改了代码怎么没反应"**：
+可能是没构建（脚本报 `lib 落后于源码`）、也可能是构建了但没重启 DSH（脚本无条件提示）。
+
+## 五、调试清单
 
 ### 1. 插件有没有被加载
 
@@ -116,7 +139,7 @@ dsh --profile headless --patch account.yml --json "用 pko_lint 检查知识库�
 
 ---
 
-## 五、源码与产物对照
+## 六、源码与产物对照
 
 `packages/dsh/tsconfig.json` 的 `rootDir` 是 `packages/`，所以一次编译同时产出 core 与 dsh：
 
@@ -130,7 +153,7 @@ packages/skills/*/SKILL.md   →  packages/dsh/lib/dsh/skills/*/SKILL.md
 
 ---
 
-## 六、常见坑
+## 七、常见坑
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
@@ -142,14 +165,14 @@ packages/skills/*/SKILL.md   →  packages/dsh/lib/dsh/skills/*/SKILL.md
 
 ---
 
-## 七、提交与发布
+## 八、提交与发布
 
 - 日常改动：本地 `git commit` 即可，**不推送、不打 tag**
 - 只有用户明确说"推到 GitHub / 发版"时，才执行 `git push` + `git tag` + `gh release create`
 
 发版流程见 `AGENTS.md` 的「发布流程」一节。
 
-## 八、测试为什么串行跑
+## 九、测试为什么串行跑
 
 `npm test` 带 `--test-concurrency=1`。原因不是慢，是**确定性**：
 
@@ -169,7 +192,7 @@ npm run test:parallel
 node --test tests/<某个文件>.test.ts
 ```
 
-## 九、提交前
+## 十、提交前
 
 ```sh
 npm run test:all     # 测试 + 代码卫生 + 类型检查

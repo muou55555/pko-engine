@@ -39,6 +39,7 @@ npm run pack:dsh        # 产出 dist/pko-dsh-<版本>.tgz
 npm run test:e2e        # 真实 DSH 会话 E2E（需要模型路由）
 npm run test:install    # 验证 tgz 与 git 两种安装方式
 npm run dev:dsh         # 开发模式：tsc --watch + 技能自动同步（改完仍需重启 DSH）
+npm run dev:info        # 看当前 profile 装的插件版本、源码 HEAD、构建是否过期
 npm run test:all        # 测试 + 卫生 + 类型 + 打包校验
 ```
 
