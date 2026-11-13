@@ -1,14 +1,47 @@
 {
   "name": "@pko/dsh",
   "version": "0.1.0",
-  "private": true,
+  "description": "PKO knowledge engine for DeepSeek Harness: 8 tools, session context injection, write guards, and bundled skills for an Obsidian vault.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "obsidian",
+    "knowledge-base",
+    "pkm",
+    "para",
+    "zettelkasten"
+  ],
+  "license": "MIT",
   "type": "module",
-  "description": "DeepSeek Harness adapter for the PKO knowledge engine",
   "main": "./lib/dsh/src/index.js",
-  "files": ["lib", "cordis.patch.yml"],
+  "exports": {
+    ".": "./lib/dsh/src/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
   "dsh": {
-    "engines": { "dsh": ">=0.2.2-rc.1" },
-    "bundle": { "patch": "./cordis.patch.yml" }
+    "engines": {
+      "dsh": ">=0.2.2-rc.1"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.2.2-rc.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"

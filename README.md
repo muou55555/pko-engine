@@ -1,45 +1,91 @@
 # pko-engine
 
-独立于任何 Agent 框架的 PKO 知识引擎。
+把 Obsidian 知识库变成 Agent 能可靠使用的一等公民：**知识引擎（core）+ 宿主适配层 + 技能包**。
+
+目前提供 **DeepSeek Harness** 适配（`@pko/dsh`），同一个 core 也能通过 CLI 被其它工具复用。
+
+## 它解决什么问题
+
+你的知识库是 Markdown，Agent 能读能写——但"能"不等于"会用"：
+
+- 模型很少主动去查（实测：415 次会话里只有 17 次检索）
+- 规矩写在提示词里，靠自觉；`grep rm` 这种判断很容易绕过
+- 每次会话都要重新摸索你的目录结构和写作规范
+
+pko-engine 把这些变成确定性能力：**检索、写入、治理、上下文注入**都由代码完成，模型只负责理解与表达。
+
+## 特性
+
+| 能力 | 说明 |
+| --- | --- |
+| 分层检索 | index → 标题/标签/摘要 → 正文 → 双链邻居，成本逐级递增 |
+| 三档上下文 | 会话档 400 / 任务档 200 / 整页档 1200 token，超预算自动裁剪 |
+| 写入协议 | 跨进程锁 → 版本校验 → 归一化 → 原子写 → 日志 → manifest |
+| 写入治理 | `.raw/` 不可改、`log.md` 只追加、删除一律拦截 |
+| 增量入库 | contentHash 相同则跳过，重复摄取不产生副本 |
+| 还原点 | 用 git ref 记录快照，创建时不改动工作区 |
+| 自动投放技能 | 插件自带 8 个 `pko-*` 技能，会话开始补进 vault |
+| 零宿主依赖 | 产物只 import `node:*`，装着就能跑 |
+
+## 架构
 
 ```
-统一知识引擎 (@pko/core)
-      ↑              ↑                ↑
- Claude Code      DeepSeek Harness   任意 MCP 客户端
-      ↓              ↓                ↓
-       统一 Obsidian 知识底座（Markdown · YAML · MOC · PARA · Wikilinks）
+@pko/core（依赖仅 node:*）
+   ↑            ↑
+@pko/cli    @pko/dsh（DSH 插件：8 工具 + 3 事件锚点）
+   ↓            ↓
+       你的 Obsidian vault（PARA · Markdown · YAML · Wikilinks）
 ```
 
-## 进度
-
-| 阶段 | 内容 | 状态 |
-|---|---|---|
-| P0 | schema / vault / links / doctor / cli | ✅ |
-| P1 | 锁 / 原子写 / manifest / policy / normalize / hook | ✅ |
-| P2 | retrieve L1–L4 / context 三档 | 待做 |
-| P3 | Claude Code 适配（skills + hooks + MCP） | 待做 |
-| P4 | DSH 适配（零依赖 Cordis 插件 + bundle） | 待做 |
-| P5 | graph / checkpoint / 语义 / 代码采集 | 待做 |
-
-## 命令
+## 快速开始
 
 ```sh
-node packages/core/src/cli.ts doctor    --vault ./fixtures/vault
-node packages/core/src/cli.ts normalize --vault ./fixtures/vault          # dry-run
-node packages/core/src/cli.ts normalize --vault ./fixtures/vault --apply  # 写盘
-echo '{"hook_event_name":"SessionStart","cwd":"."}' | node packages/core/src/cli.ts hook --vault ./fixtures/vault
-npm test
+git clone <本仓库> pko-engine
+cd pko-engine
+pnpm install
+npm run build:dsh
+dsh plugin --profile web add link:"$PWD/packages/dsh"
 ```
 
-## 设计约束
+重启 DSH，在 vault 目录里打开一个会话，输入 `/pko-query` 试试。
 
-1. `packages/core` 运行时只允许 `node:*`；出现框架依赖即为设计事故。
-2. 适配器只做事件映射，业务逻辑一律在 core。
-3. 写入必须走 `writePage`（锁 → 版本校验 → 归一化 → 原子写 → 日志）。
-4. 改写页面时保留非契约 frontmatter 字段，绝不因为不认识就丢掉。
+完整步骤（含前置条件、验证、排错）：见 **[安装手册](docs/INSTALL.md)**。
+日常怎么用：见 **[使用手册](docs/USAGE.md)**。
+
+## 常用命令
+
+```sh
+npm test             # 单元 / 集成 / 功能测试
+npm run test:e2e     # 真实 DSH 会话 E2E（需要可用模型路由）
+npm run typecheck    # 类型检查
+npm run hygiene      # 代码卫生（无 any / 无 console / 行尾等）
+npm run build:dsh    # 构建插件产物（含内联 core 与技能）
+```
+
+CLI（不需要 DSH 也能用）：
+
+```sh
+node packages/core/src/cli.ts doctor    --vault ~/your-vault
+node packages/core/src/cli.ts query 缓存穿透 --vault ~/your-vault
+node packages/core/src/cli.ts context --vault ~/your-vault --task "接下来做什么"
+node packages/core/src/cli.ts checkpoint --vault ~/your-vault
+```
+
+## 目录结构
+
+```
+packages/
+├── core/     @pko/core   引擎本体（零依赖）
+├── dsh/      @pko/dsh    DeepSeek Harness 适配层
+└── skills/   8 个 pko-* 技能（Markdown）
+docs/         安装与使用手册
+tests/        单元 / 集成 / 功能 / 并发 / 性能 / 文档 / E2E
+```
 
 ## 测试
 
-```sh
-npm test        # node --test tests/*.test.ts，12 例
-```
+103 例本地测试 + 9 条真实会话断言。当前：行覆盖约 90%，`tsc` 0 error，卫生检查通过。
+
+## 许可
+
+MIT，见 [LICENSE](LICENSE)。

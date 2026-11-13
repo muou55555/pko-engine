@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Framework-agnostic knowledge engine for PKO vaults",
+  "description": "Framework-agnostic PKO knowledge engine (core + DeepSeek Harness adapter + skills)",
   "engines": {
     "node": ">=22.18"
   },
@@ -16,11 +16,22 @@
     "test:coverage": "node --test --experimental-test-coverage tests/*.test.ts",
     "test:e2e": "node tests/e2e/dsh-session.mjs",
     "skills:install": "node scripts/install-skills.mjs",
-    "build:dsh": "tsc -p packages/dsh/tsconfig.json --typeRoots /Users/zhangxiaowu/workspace/dsh/deepseek-harness/node_modules/@types && node scripts/bundle-skills.mjs",
-    "bundle:skills": "node scripts/bundle-skills.mjs"
+    "build:dsh": "tsc -p packages/dsh/tsconfig.json && node scripts/bundle-skills.mjs",
+    "bundle:skills": "node scripts/bundle-skills.mjs",
+    "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p packages/dsh/tsconfig.json --noEmit",
+    "build": "npm run build:dsh && npm run typecheck",
+    "test:all": "npm test && npm run hygiene && npm run typecheck"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
-  }
+  },
+  "license": "MIT",
+  "keywords": [
+    "pko",
+    "knowledge-base",
+    "obsidian",
+    "dsh",
+    "deepseek-harness"
+  ]
 }
