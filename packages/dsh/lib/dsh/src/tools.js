@@ -11,7 +11,7 @@ import { readIfExists, atomicWrite } from "../../core/src/store.js";
 import { sha256 } from "../../core/src/hash.js";
 import { vaultPaths } from "../../core/src/paths.js";
 import { createCheckpoint, listCheckpoints, restoreCheckpoint } from "../../core/src/checkpoint.js";
-import { applyScaffold, planScaffold, vaultStatus } from "../../core/src/scaffold.js";
+import { applyScaffold, hasVaultMarker, planScaffold, vaultStatus } from "../../core/src/scaffold.js";
 import { isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 /** 从执行上下文防御性读取会话目录。 */
@@ -324,12 +324,13 @@ export const TOOL_SPECS = [
     },
     {
         name: 'pko_init',
-        description: '在指定目录初始化 PKO 知识库骨架（PARA 目录 + 索引 + 热缓存 + brain 记忆层）。只补缺、不覆盖已有文件；已有部分结构时补齐其余部分。必须先向用户确认目录。',
+        description: '初始化或补齐 PKO 知识库骨架。先用 plan=true 预览将创建/补齐的清单，把清单展示给用户并得到明确同意后，再不带 plan 执行。只补缺，不覆盖已有文件。',
         parameters: {
             type: 'object',
             additionalProperties: false,
             properties: {
                 path: { type: 'string', description: '目标目录，绝对路径或相对会话目录；省略则用当前目录' },
+                plan: { type: 'boolean', description: 'true = 只预览不写盘；给用户看清单、确认后再执行' },
                 force: { type: 'boolean', description: '目录非空且不像知识库时，是否仍然初始化' },
             },
         },
@@ -337,6 +338,11 @@ export const TOOL_SPECS = [
             type: 'object',
             properties: {
                 target: { type: 'string' },
+                dryRun: { type: 'boolean' },
+                plannedDirs: { type: 'number' },
+                plannedFiles: { type: 'number' },
+                sampleDirs: { type: 'array' },
+                sampleFiles: { type: 'array' },
                 createdDirs: { type: 'number' },
                 createdFiles: { type: 'number' },
                 skipped: { type: 'number' },
@@ -346,7 +352,21 @@ export const TOOL_SPECS = [
         },
         render: (_args, value) => {
             const result = value;
-            // 结构完整时明确宣告就绪：模型无需再跑 status / lint 或 bash 打量目录
+            const nl = String.fromCharCode(10);
+            // 预览：只报清单，绝不写盘
+            if (result.dryRun === true) {
+                if ((result.plannedDirs ?? 0) === 0 && (result.plannedFiles ?? 0) === 0) {
+                    return text(`pko: ${result.target} 结构已完整，无需创建任何内容。`);
+                }
+                return text([
+                    `pko: ${result.target} 的初始化预览（尚未写盘）`,
+                    `将新建 ${result.plannedDirs ?? 0} 个目录、${result.plannedFiles ?? 0} 个文件；已有 ${result.skipped} 项会跳过，不覆盖。`,
+                    `目录示例：${(result.sampleDirs ?? []).join('、')}`,
+                    `文件示例：${(result.sampleFiles ?? []).join('、')}`,
+                    '请把这份清单展示给用户；得到明确同意后，再调用 pko_init（不带 plan）执行。',
+                ].join(nl));
+            }
+            // 执行后：结构完整就宣告就绪
             if (result.missingDirs === 0) {
                 const head = result.createdDirs === 0 && result.createdFiles === 0
                     ? `pko: ${result.target} 已经是标准结构。`
@@ -356,17 +376,32 @@ export const TOOL_SPECS = [
                     '库已就绪，无需再检查：结构完整（0 缺失），目录与种子文件齐备。',
                     '不要再用 pko_status / pko_lint / bash 复查目录结构，直接把结果告诉用户即可。',
                     '下一步：需要时读 AGENTS.md 了解写入规范。',
-                ].join(String.fromCharCode(10)));
+                ].join(nl));
             }
             return text([
                 `pko: 已初始化 ${result.target}，新建 ${result.createdDirs} 个目录、${result.createdFiles} 个文件（跳过已存在的 ${result.skipped} 项）。`,
                 `注意：仍有 ${result.missingDirs} 个标准目录缺失，可用 pko_status 查看具体缺哪些。`,
-            ].join(String.fromCharCode(10)));
+            ].join(nl));
         },
         needsVault: false,
         run: async (root, args) => {
             const target = resolveTarget(root, str(args, 'path'));
             const plan = await planScaffold(target);
+            if (args.plan === true) {
+                return {
+                    target,
+                    dryRun: true,
+                    plannedDirs: plan.dirs.length,
+                    plannedFiles: plan.files.length,
+                    sampleDirs: plan.dirs.slice(0, 8),
+                    sampleFiles: plan.files.slice(0, 8),
+                    createdDirs: 0,
+                    createdFiles: 0,
+                    skipped: plan.existing.length,
+                    missingDirs: (await vaultStatus(target)).missingDirs.length,
+                    isVault: await hasVaultMarker(target),
+                };
+            }
             let createdDirs = 0;
             let createdFiles = 0;
             let skipped = plan.existing.length;

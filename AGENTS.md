@@ -9,9 +9,9 @@
 ```
 packages/core      @pko/core     纯引擎（零宿主依赖）：schema / 检索 / 写协议 / 治理 / 骨架
 packages/dsh       @pko/dsh      DeepSeek Harness 适配层：10 个工具 + 3 个事件锚点
-packages/skills    8 个 pko-* 技能（纯 Markdown，被插件投放到知识库）
+packages/skills    9 个 pko-* 技能（纯 Markdown，被插件投放到知识库）
 docs/              安装 / 使用 / 开发 / 架构 / 一致性核验
-tests/             131 例：单元、集成、功能、并发、崩溃、性能、文档、一致性
+tests/             单元、集成、功能、并发、崩溃、性能、文档、一致性
 ```
 
 ## 四条铁律

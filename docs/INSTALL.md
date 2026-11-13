@@ -2,6 +2,9 @@
 
 面向第一次使用的人。照着做，不需要先理解内部实现。
 
+> 在 DSH 会话里直接说「帮我安装 pko-engine」，会走 `/pko-setup` 引导流程：
+> 先检查环境，再问你要新建还是补齐目录，每一步都会让你确认，不会擅自创建。
+
 ---
 
 ## 一、你会得到什么
@@ -62,11 +65,8 @@ node packages/core/src/cli.ts init --vault ~/my-pko-vault
 - **初始化后体检是 0 error / 0 warning**，可以直接开始写
 - 目录非空又不像知识库时，会要求加 `--force`，避免污染现有项目
 
-也可以复制示例库（内容更少）：
-
-```sh
-cp -R examples/minimal-vault ~/my-pko-vault
-```
+引擎不会替你自动建库：`pko init` 需要你给出目录并确认。
+在 DSH 会话里说「帮我安装」会走 `/pko-setup` 引导流程。
 
 ---
 
@@ -99,9 +99,9 @@ dsh plugin --profile web add link:"$PWD/packages/dsh"
 ```sh
 cd pko-engine
 pnpm install            # 首次需要，用于构建
-npm run pack:dsh        # 产出 dist/pko-dsh-0.1.1.tgz
+npm run pack:dsh        # 产出 dist/pko-dsh-<版本>.tgz
 
-dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.1.tgz"
+dsh plugin --profile web add "$PWD"/dist/pko-dsh-*.tgz
 ```
 
 tgz 是快照：之后改源码不影响已装的版本；要更新就重新打包安装。
@@ -115,7 +115,7 @@ dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#pa
 锁定到某个 tag（推荐）：
 
 ```sh
-dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#v0.1.1&path:packages/dsh"
+dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#v0.1.0&path:packages/dsh"
 ```
 
 说明：

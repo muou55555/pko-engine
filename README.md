@@ -26,7 +26,7 @@ pko-engine 把这些变成确定性能力：**检索、写入、治理、上下�
 | 写入治理 | `.raw/` 不可改、`log.md` 只追加、删除一律拦截 |
 | 增量入库 | contentHash 相同则跳过，重复摄取不产生副本 |
 | 还原点 | 用 git ref 记录快照，创建时不改动工作区 |
-| 自动投放技能 | 插件自带 8 个 `pko-*` 技能，会话开始补进 vault |
+| 自动投放技能 | 插件自带 9 个 `pko-*` 技能，会话开始补进 vault |
 | 一键建库 | `pko init` 生成 PARA + 索引 + 热缓存 + brain 骨架，只补缺不覆盖 |
 | 零宿主依赖 | 产物只 import `node:*`，装着就能跑 |
 
@@ -56,7 +56,7 @@ dsh plugin --profile web add link:"$PWD/packages/dsh"
 
 ```sh
 npm run pack:dsh                        # 打包成 tgz
-dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.1.tgz"
+dsh plugin --profile web add "$PWD"/dist/pko-dsh-*.tgz
 
 # 或者直接从 Git 仓库安装（需把仓库推到你自己的远端）
 dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#path:packages/dsh"

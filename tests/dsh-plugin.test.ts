@@ -242,3 +242,21 @@ test('pko_init：真跑一次后 missingDirs 为 0（能触发就绪分支）', 
   assert.equal(result.missingDirs, 0)
   assert.equal(result.isVault, true)
 })
+
+
+test('pko_init：plan=true 只预览、不写盘', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-plan-'))
+
+  const preview = await callTool(host, 'pko_init', { plan: true }, dir) as { dryRun: boolean; plannedDirs: number; plannedFiles: number }
+  assert.equal(preview.dryRun, true)
+  assert.ok(preview.plannedDirs > 0, '应报告将创建的目录数')
+  assert.ok(preview.plannedFiles > 0, '应报告将创建的文件数')
+
+  const { readdir } = await import('node:fs/promises')
+  assert.deepEqual(await readdir(dir), [], '预览模式不得写盘')
+
+  const real = await callTool(host, 'pko_init', {}, dir) as { createdDirs: number }
+  assert.ok(real.createdDirs > 0, '确认后才真正创建')
+})

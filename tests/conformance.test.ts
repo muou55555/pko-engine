@@ -75,6 +75,7 @@ test('规范：每个技能都覆盖它在 vault 里对应的流程', async () =
     ['pko-moc', ['40-Resources/', '30-Areas/', '20-Projects/', '10-Atlas/moc-', 'MOC 覆盖率', '孤立']],
     ['pko-wrap-up', ['70-Calendar/daily/', '50-Wiki/hot.md', 'brain/', '00-Inbox']],
     ['pko-canvas', ['60-Outputs/canvases/', '_attachments/images/canvas/', '_attachments/pdfs/canvas/']],
+    ['pko-setup', ['node --version', 'dsh --version', 'pko_init', 'plan: true', 'pko_status', '不要自动创建']],
   ]
   for (const [name, keywords] of expectations) {
     const text = await skill(name)
@@ -84,8 +85,8 @@ test('规范：每个技能都覆盖它在 vault 里对应的流程', async () =
   }
 })
 
-test('规范：技能都是人类命令（不自动触发）', async () => {
-  for (const name of ['pko-ingest', 'pko-save', 'pko-daily', 'pko-query', 'pko-weekly', 'pko-moc', 'pko-wrap-up', 'pko-canvas']) {
+test('规范：技能都是人类命令（不自动触发），共 9 个', async () => {
+  for (const name of ['pko-setup', 'pko-ingest', 'pko-save', 'pko-daily', 'pko-query', 'pko-weekly', 'pko-moc', 'pko-wrap-up', 'pko-canvas']) {
     const text = await skill(name)
     assert.match(text, /user-invocable: true/, `${name} 应可被用户调用`)
     assert.match(text, /disable-model-invocation: true/, `${name} 不应自动触发`)
