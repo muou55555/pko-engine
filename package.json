@@ -14,7 +14,9 @@
     "normalize:dry": "node packages/core/src/cli.ts normalize --vault ./fixtures/vault",
     "hygiene": "node scripts/hygiene.mjs",
     "test:coverage": "node --test --experimental-test-coverage tests/*.test.ts",
-    "test:e2e": "node tests/e2e/dsh-session.mjs"
+    "test:e2e": "node tests/e2e/dsh-session.mjs",
+    "skills:install": "node scripts/install-skills.mjs",
+    "build:dsh": "tsc -p packages/dsh/tsconfig.json --typeRoots /Users/zhangxiaowu/workspace/dsh/deepseek-harness/node_modules/@types"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
