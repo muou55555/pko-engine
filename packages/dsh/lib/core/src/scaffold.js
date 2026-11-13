@@ -422,9 +422,8 @@ export async function planScaffold(root) {
  * @throws PkoError 目标目录不存在，或需要 force 而未提供
  */
 export async function applyScaffold(plan, options = {}) {
-    if (!await exists(plan.root)) {
-        throw new PkoError('PKO_NO_DIR', `目标目录不存在：${plan.root}`);
-    }
+    // 目标目录可以不存在：初始化本来就是"从零建库"，用户给的路径就是目的地
+    await mkdir(plan.root, { recursive: true });
     if (plan.needsForce && options.force !== true) {
         throw new PkoError('PKO_NOT_EMPTY', `${plan.root} 不是空目录，也不像知识库。确认要在这里初始化请加 --force。`);
     }

@@ -187,3 +187,32 @@ test('工具在无 vault 时报错会指引初始化', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'pko-novault2-'))
   await assert.rejects(() => callTool(host, 'pko_lint', {}, dir), /pko_init/)
 })
+
+
+test('pko_init：可以指定目标目录，不必是当前目录', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const cwd = await mkdtemp(join(tmpdir(), 'pko-cwd-'))
+  const target = join(await mkdtemp(join(tmpdir(), 'pko-parent-')), 'nested-vault')
+
+  const result = await callTool(host, 'pko_init', { path: target }, cwd) as { target: string; createdDirs: number }
+  assert.equal(result.target, target)
+  assert.ok(result.createdDirs > 0)
+
+  const status = await callTool(host, 'pko_status', {}, target) as { isVault: boolean }
+  assert.equal(status.isVault, true)
+})
+
+test('pko_init：已有部分结构时补齐，不重建', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-partial-'))
+  await mkdir(join(dir, '50-Wiki'), { recursive: true })
+  await writeFile(join(dir, '50-Wiki/hot.md'), '# 我的热缓存\n', 'utf8')
+
+  const result = await callTool(host, 'pko_init', {}, dir) as { createdDirs: number; missingDirs: number }
+  assert.ok(result.createdDirs > 0, '应补齐缺失目录')
+  assert.equal(result.missingDirs, 0, '补齐后不应再有缺失')
+  const hot = await (await import('node:fs/promises')).readFile(join(dir, '50-Wiki/hot.md'), 'utf8')
+  assert.equal(hot, '# 我的热缓存\n', '不得覆盖用户已有文件')
+})

@@ -100,7 +100,22 @@ export function mountEvents(ctx: EventHost, config: PkoConfig): () => void {
     if (agent?.inject === undefined) return
     try {
       const vault = resolveVault(config.vault, cwdOf(agent))
-      if (vault === undefined) return
+      if (vault === undefined) {
+        // 不是知识库：不擅自创建，先请用户确认目录
+        if (config.initPrompt !== false) {
+          agent.inject(userNotice([
+            `当前目录不是 PKO 知识库：${cwdOf(agent)}`,
+            '',
+            '如果用户想在这里建立知识库，请按顺序做：',
+            '1. 先问用户要把库建在哪个目录（默认可以是当前目录，也可以是别的路径）',
+            '2. 用户明确同意后，调用 pko_init(path: "<用户给的目录>")',
+            '3. 再调用 pko_status 确认结构完整、体检干净',
+            '',
+            '在用户确认目录之前，不要创建任何目录或文件。',
+          ].join('\n')))
+        }
+        return
+      }
       if (config.installSkills !== false) {
         try {
           const result = ensureSkills(vault)

@@ -76,11 +76,12 @@ test('vault 解析：完全不在库内时返回 undefined', async () => {
 })
 
 test('配置：缺省值正确，非法值被收敛', () => {
-  assert.deepEqual(readConfig(undefined), { trigger: true, guard: true, installSkills: true, maxInjectTokens: 400 })
-  const parsed = readConfig({ vault: '  ', trigger: 'no', guard: 1, installSkills: false, maxInjectTokens: 10 })
+  assert.deepEqual(readConfig(undefined), { trigger: true, guard: true, installSkills: true, initPrompt: true, maxInjectTokens: 400 })
+  const parsed = readConfig({ vault: '  ', trigger: 'no', guard: 1, installSkills: false, initPrompt: 'x', maxInjectTokens: 10 })
   assert.equal(parsed.vault, undefined, '空字符串不应当作路径')
   assert.equal(parsed.trigger, true, '非布尔值回落默认')
   assert.equal(parsed.guard, true)
+  assert.equal(parsed.initPrompt, true, '非布尔值回落默认')
   assert.equal(parsed.installSkills, false)
   assert.equal(parsed.maxInjectTokens, 50, '预算下限为 50')
 })
@@ -191,4 +192,54 @@ test('事件：召回只看最新用户消息，不被历史话题带偏', async
   assert.equal(injected.length, 1)
   assert.match(injected[0] ?? '', /旅行计划/)
   assert.doesNotMatch(injected[0] ?? '', /缓存穿透/, '不应被历史话题带偏')
+})
+
+
+test('事件：非知识库目录会注入初始化确认提示（不擅自建库）', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-novault-'))
+  const injected: string[] = []
+  const agent = {
+    inject: (message: unknown) => { injected.push(textOf(message)) },
+    session: { header: { cwd: dir } },
+  }
+  const handler = host.handlers.get('agent/created') as (payload: unknown) => Promise<unknown>
+  await handler({ agent })
+
+  assert.equal(injected.length, 1, '应注入一条提示')
+  assert.match(injected[0] ?? '', /不是 PKO 知识库/)
+  assert.match(injected[0] ?? '', /pko_init/)
+  assert.match(injected[0] ?? '', /确认/, '提示里必须要求先确认')
+})
+
+test('事件：已经是知识库时不注入初始化提示', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-vault-'))
+  await mkdir(join(dir, '50-Wiki'), { recursive: true })
+  const injected: string[] = []
+  const agent = {
+    inject: (message: unknown) => { injected.push(textOf(message)) },
+    session: { header: { cwd: dir } },
+  }
+  const handler = host.handlers.get('agent/created') as (payload: unknown) => Promise<unknown>
+  await handler({ agent })
+
+  assert.equal(injected.some((item) => item.includes('不是 PKO 知识库')), false)
+})
+
+test('事件：initPrompt=false 时不再提示初始化', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, { initPrompt: false })
+  const dir = await mkdtemp(join(tmpdir(), 'pko-novault-off-'))
+  const injected: string[] = []
+  const agent = {
+    inject: (message: unknown) => { injected.push(textOf(message)) },
+    session: { header: { cwd: dir } },
+  }
+  const handler = host.handlers.get('agent/created') as (payload: unknown) => Promise<unknown>
+  await handler({ agent })
+
+  assert.equal(injected.length, 0)
 })

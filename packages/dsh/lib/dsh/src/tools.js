@@ -12,12 +12,21 @@ import { sha256 } from "../../core/src/hash.js";
 import { vaultPaths } from "../../core/src/paths.js";
 import { createCheckpoint, listCheckpoints, restoreCheckpoint } from "../../core/src/checkpoint.js";
 import { applyScaffold, planScaffold, vaultStatus } from "../../core/src/scaffold.js";
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
+import { homedir } from 'node:os';
 /** 从执行上下文防御性读取会话目录。 */
 export function cwdOf(exec) {
     const record = exec;
     const cwd = record?.agent?.session?.header?.cwd;
     return typeof cwd === 'string' ? cwd : process.cwd();
+}
+/** 把用户给的路径解析成绝对路径，支持 ~ 与相对路径。 */
+function resolveTarget(base, raw) {
+    const text = (raw ?? '').trim();
+    if (text === '')
+        return base;
+    const expanded = text === '~' ? homedir() : text.startsWith('~/') ? join(homedir(), text.slice(2)) : text;
+    return isAbsolute(expanded) ? expanded : resolve(base, expanded);
 }
 /** 文件名安全的 slug：保留中文与字母数字。 */
 function slug(title) {
@@ -315,33 +324,56 @@ export const TOOL_SPECS = [
     },
     {
         name: 'pko_init',
-        description: '在当前目录初始化 PKO 知识库骨架（PARA 目录 + 索引 + 热缓存 + brain 记忆层）。只补缺、不覆盖已有文件。',
+        description: '在指定目录初始化 PKO 知识库骨架（PARA 目录 + 索引 + 热缓存 + brain 记忆层）。只补缺、不覆盖已有文件；已有部分结构时补齐其余部分。必须先向用户确认目录。',
         parameters: {
             type: 'object',
             additionalProperties: false,
-            properties: { force: { type: 'boolean', description: '目录非空且不像知识库时，是否仍然初始化' } },
+            properties: {
+                path: { type: 'string', description: '目标目录，绝对路径或相对会话目录；省略则用当前目录' },
+                force: { type: 'boolean', description: '目录非空且不像知识库时，是否仍然初始化' },
+            },
         },
         outputSchema: {
             type: 'object',
-            properties: { createdDirs: { type: 'number' }, createdFiles: { type: 'number' }, skipped: { type: 'number' } },
+            properties: {
+                target: { type: 'string' },
+                createdDirs: { type: 'number' },
+                createdFiles: { type: 'number' },
+                skipped: { type: 'number' },
+                missingDirs: { type: 'number' },
+                isVault: { type: 'boolean' },
+            },
         },
         render: (_args, value) => {
             const result = value;
-            if (result.createdDirs === 0 && result.createdFiles === 0)
-                return text('pko: 已经是标准结构，无需初始化。');
-            return text(`pko: 已初始化。新建 ${result.createdDirs} 个目录、${result.createdFiles} 个文件（跳过已存在的 ${result.skipped} 项）。
-下一步：读 AGENTS.md 了解写入规范。`);
+            if (result.createdDirs === 0 && result.createdFiles === 0) {
+                return text(`pko: ${result.target} 已经是标准结构，无需初始化。`);
+            }
+            const tail = result.missingDirs === 0 ? '结构完整（0 缺失）。' : `仍有 ${result.missingDirs} 个标准目录缺失。`;
+            return text([
+                `pko: 已初始化 ${result.target}。`,
+                `新建 ${result.createdDirs} 个目录、${result.createdFiles} 个文件（跳过已存在的 ${result.skipped} 项）。${tail}`,
+                '下一步：读 AGENTS.md 了解写入规范。',
+            ].join(String.fromCharCode(10)));
         },
         needsVault: false,
         run: async (root, args) => {
-            const plan = await planScaffold(root);
-            if (plan.dirs.length === 0 && plan.files.length === 0)
-                return { createdDirs: 0, createdFiles: 0, skipped: plan.existing.length };
-            if (plan.needsForce && args.force !== true) {
-                throw new Error('pko: 当前目录非空且不像知识库。确认要在这里初始化，请传 force: true。');
+            const target = resolveTarget(root, str(args, 'path'));
+            const plan = await planScaffold(target);
+            let createdDirs = 0;
+            let createdFiles = 0;
+            let skipped = plan.existing.length;
+            if (plan.dirs.length > 0 || plan.files.length > 0) {
+                if (plan.needsForce && args.force !== true) {
+                    throw new Error(`pko: ${target} 非空且不像知识库。确认要在这里初始化，请传 force: true。`);
+                }
+                const result = await applyScaffold(plan, { force: args.force === true });
+                createdDirs = result.createdDirs.length;
+                createdFiles = result.createdFiles.length;
+                skipped = result.skipped.length;
             }
-            const result = await applyScaffold(plan, { force: args.force === true });
-            return { createdDirs: result.createdDirs.length, createdFiles: result.createdFiles.length, skipped: result.skipped.length };
+            const status = await vaultStatus(target);
+            return { target, createdDirs, createdFiles, skipped, missingDirs: status.missingDirs.length, isVault: status.isVault };
         },
     },
 ];

@@ -54,6 +54,7 @@ DSH 会自动把 `@pko/dsh` 登记进 `dsh.profile.bundles`，不需要手改配
     trigger: true          # 任务级召回
     guard: true            # 写入闸门
     installSkills: true    # 会话开始投放到 <vault>/.dsh/skills
+    initPrompt: true       # 不是知识库时提示用户初始化（会先要求确认目录）
     maxInjectTokens: 400   # 会话注入预算
 ```
 

@@ -55,9 +55,10 @@ test('init：非空且不像知识库的目录需要 force', async () => {
   assert.ok(forced.createdDirs.length > 0)
 })
 
-test('init：目标目录不存在时报明确错误', async () => {
-  const plan = await planScaffold(join(tmpdir(), 'pko-not-exist-xyz'))
-  await assert.rejects(() => applyScaffold(plan), /目标目录不存在/)
+test('init：目标目录不存在时会创建它', async () => {
+  const target = join(await mkdtemp(join(tmpdir(), 'pko-parent-')), 'brand-new', 'vault')
+  await applyScaffold(await planScaffold(target))
+  assert.equal(await hasVaultMarker(target), true, '应把新目录建出来并放好标记')
 })
 
 test('status：非知识库目录如实报告', async () => {

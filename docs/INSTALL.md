@@ -221,6 +221,7 @@ npm run test:install        # 自动验证 tgz 与 git 两种安装方式
 | `trigger` | `true` | 提问时按最新用户消息召回相关知识 |
 | `guard` | `true` | 拦截对 `.raw/` 的修改、`rm`、`log.md` 覆写 |
 | `installSkills` | `true` | 把随包技能补进 `<vault>/.dsh/skills`（只补缺，不覆盖） |
+| `initPrompt` | `true` | 会话目录不是知识库时，提示用户可初始化（会先要求确认目录） |
 | `maxInjectTokens` | `400` | 单次注入预算 |
 
 ---
