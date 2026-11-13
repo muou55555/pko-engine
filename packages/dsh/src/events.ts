@@ -6,17 +6,14 @@
  *   agent/pre-step    任务级召回；先调用 next() 再补充，不打断宿主决策
  *   tools/pre-execute 写入治理；fs/*-intent 只表达版本守卫，没有拒绝语义，硬拦截只能走这里
  */
-import { join } from 'node:path'
+import { existsSync } from 'node:fs'
+import { relative, resolve, sep } from 'node:path'
 import type { PkoConfig } from './config.ts'
 import { resolveVault } from './vault.ts'
 import { userNotice } from './notice.ts'
 import { ensureSkills } from './skills.ts'
 import { sessionContext, taskContext } from '../../core/src/context.ts'
 import { checkBash, checkWrite, normalizeRel } from '../../core/src/policy.ts'
-import { existsSync, statSync } from 'node:fs'
-import { relative, resolve, sep } from 'node:path'
-import { readIfExists } from '../../core/src/store.ts'
-import { vaultPaths } from '../../core/src/paths.ts'
 
 /** 宿主上下文里本插件用到的最小面。 */
 export interface EventHost {
@@ -36,22 +33,37 @@ function cwdOf(agent: AgentLike | undefined): string {
   return typeof cwd === 'string' ? cwd : process.cwd()
 }
 
-/** 从 pre-step 决策里尽力取出本步的用户原文。 */
+/** 取一条消息里的纯文本。 */
+function contentText(content: unknown): string {
+  if (typeof content === 'string') return content.trim()
+  if (!Array.isArray(content)) return ''
+  const parts: string[] = []
+  for (const block of content) {
+    const text = (block as { text?: unknown }).text
+    if (typeof block === 'object' && block !== null && typeof text === 'string') parts.push(text)
+  }
+  return parts.join('\n').trim()
+}
+
+/**
+ * 取出本步的**最新用户原文**。
+ *
+ * 只取最后一条 user 消息，不能拼接整段历史：决策里带的可能是累积对话，
+ * 用全文做召回会让每一步都命中前面聊过的话题，于是同一个提示被反复注入，
+ * 而真正的新问题反而被淹没（真实会话里观察到模型说"这已是第三次出现同一条提示"）。
+ */
 function decisionText(decision: unknown): string {
   const record = decision as { messages?: unknown[] } | null
   const messages = record?.messages
   if (!Array.isArray(messages)) return ''
-  const parts: string[] = []
-  for (const message of messages) {
-    const content = (message as { content?: unknown }).content
-    if (typeof content === 'string') { parts.push(content); continue }
-    if (!Array.isArray(content)) continue
-    for (const block of content) {
-      const text = (block as { text?: unknown }).text
-      if (typeof block === 'object' && block !== null && typeof text === 'string') parts.push(text)
-    }
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index] as { role?: unknown; content?: unknown } | undefined
+    if (message === undefined) continue
+    if (typeof message.role === 'string' && message.role !== 'user') continue
+    const text = contentText(message.content)
+    if (text !== '') return text.slice(0, 2000)
   }
-  return parts.join('\n').trim()
+  return ''
 }
 
 /** 判断路径是否在 vault 内，并返回相对路径。 */

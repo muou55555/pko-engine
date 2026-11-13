@@ -108,7 +108,7 @@ export const TOOL_SPECS: readonly ToolSpec[] = [
   },
   {
     name: 'pko_read',
-    description: '读取 vault 中某一页的完整正文与元信息。按 id 或文件名匹配。',
+    description: '读取 vault 中某一页的完整正文与元信息。接受页面 id、文件名（含或不含 .md）或 vault 内相对路径。',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -121,10 +121,14 @@ export const TOOL_SPECS: readonly ToolSpec[] = [
       return text(`${page.path} — ${page.title}\n\n${page.body}`)
     },
     run: async (vault, args) => {
-      const id = str(args, 'id') ?? ''
+      const raw = (str(args, 'id') ?? '').trim()
+      const target = raw.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\.md$/, '')
       const { pages } = await scanVault(vault)
-      const page = pages.find((candidate) => candidate.id === id || stemOf(candidate.path) === id)
-      if (page === undefined) throw new Error(`pko: 找不到页面 ${id}`)
+      // 三种写法都接受：页面 id、文件名、vault 内相对路径
+      const page = pages.find((candidate) => candidate.id === target)
+        ?? pages.find((candidate) => stemOf(candidate.path) === target)
+        ?? pages.find((candidate) => candidate.path.replace(/\.md$/, '') === target)
+      if (page === undefined) throw new Error(`pko: 找不到页面 ${raw}`)
       return { path: page.path, title: page.title, body: page.body }
     },
   },

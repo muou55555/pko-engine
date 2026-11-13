@@ -120,3 +120,20 @@ test('dsh 插件：删除命令被拒绝，正常写入放行', async () => {
   )
   assert.equal((allowed as { kind: string }).kind, 'enter')
 })
+
+
+test('pko_read：id / 文件名 / 相对路径三种写法都能读到', async () => {
+  const host = makeHost()
+  const root = await makeVault()
+  apply(host.ctx as never, { vault: root })
+  const read = host.tools.find((tool) => tool.name === 'pko_read') as unknown as {
+    execute(args: Record<string, unknown>, exec: unknown): Promise<{ path: string }>
+  }
+  const rel = '40-Resources/concepts/target.md'
+  await mkdir(join(root, '40-Resources', 'concepts'), { recursive: true })
+  await writeFile(join(root, rel), '---\nid: target\ntitle: 靶页\ntype: note\ntier: supporting\n---\n\n正文\n')
+  for (const key of ['target', 'target.md', rel, `./${rel}`]) {
+    const page = await read.execute({ id: key }, {})
+    assert.equal(page.path, rel, `${key} 应能定位到页面`)
+  }
+})

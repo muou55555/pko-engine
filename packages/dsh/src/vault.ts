@@ -2,7 +2,10 @@
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
-const MARKERS = ['.pko', join('50-Wiki', 'index.md')]
+// 识别标记按"多强信号"排列：`.pko/` 是我们自己的状态目录，最可靠；
+// 其次是 50-Wiki 目录本身（PKO 骨架存在的证据），最后才是索引文件——
+// 只有 index.md 会导致"还没建索引的新库"识别不出来（真实会话里踩到）。
+const MARKERS = ['.pko', '50-Wiki', join('50-Wiki', 'index.md')]
 
 /**
  * 从某个目录向上找最近的 PKO vault 根。

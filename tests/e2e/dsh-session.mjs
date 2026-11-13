@@ -1,28 +1,34 @@
 #!/usr/bin/env node
 /**
- * 真实 DSH 会话 E2E。
+ * 真实 DSH 会话 E2E：验证 @pko/dsh 插件在真实 agent 会话里的行为。
  *
- * 设计原则：**只断言确定性证据**，不断言模型说了什么。
- *   - 注入是否发生 → 看事件流里有没有我们的标记文本
- *   - 拒绝是否生效 → 看文件是否原封不动
- *   - 归一化是否跑过 → 看模型明确说不写的字段是否出现
+ * 断言的都确定性证据：
+ *   - 工具是否真被调用 → 解析 --json 事件流里的 tool_call
+ *   - 闸门是否生效     → 受保护文件的字节级内容
+ *   - 事件是否触发     → 技能投放这种可见副作用
  *
- * 需要：dsh CLI 可用 + 已认证的模型路由。缺任一条件时脚本以 BLOCKED 退出（不当作失败）。
+ * 需要：dsh CLI + 可用模型路由。缺认证时以 BLOCKED 退出（exit 2），不算失败。
  */
 import { spawnSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const CLI = join(ROOT, 'packages/core/src/cli.ts')
+const PLUGIN = join(ROOT, 'packages/dsh')
+const PROFILE = `pko-e2e-${process.pid}`
 const TASK_TIMEOUT_MS = 240_000
 
 const results = []
 const record = (name, ok, detail) => {
-  results.push({ name, ok, detail })
+  results.push({ name, ok })
   console.log(`${ok ? '✔' : '✖'} ${name}${detail === undefined ? '' : ` —— ${detail}`}`)
+}
+
+/** 跑一条 dsh 命令。 */
+function dsh(args, options = {}) {
+  return spawnSync('dsh', args, { encoding: 'utf8', timeout: options.timeout ?? 120_000, cwd: options.cwd, env: { ...process.env } })
 }
 
 /** 建夹具 vault。 */
@@ -30,104 +36,110 @@ async function prepare(dir) {
   const vault = join(dir, 'vault')
   await mkdir(join(vault, '50-Wiki'), { recursive: true })
   await mkdir(join(vault, '.raw'), { recursive: true })
-  await mkdir(join(vault, '40-Resources/concepts'), { recursive: true })
-  await mkdir(join(vault, '00-Inbox'), { recursive: true })
-  await writeFile(join(vault, '50-Wiki/hot.md'), '# Hot\n\n正在验证 PKO 引擎的 DSH 会话接入\n')
-  await writeFile(join(vault, '50-Wiki/index.md'), '---\nid: index\ntitle: 索引\ntype: wiki\ntier: supporting\ntags: [meta]\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 索引\n\n- [[cache-penetration]] — 缓存穿透\n')
-  await writeFile(join(vault, '40-Resources/concepts/cache-penetration.md'), '---\nid: cache-penetration\ntitle: 缓存穿透\ntype: note\ntier: core\ntags: [cache]\nsummary: 布隆过滤器与空值缓存\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 缓存穿透\n\n布隆过滤器 + 空值缓存。\n')
-  await writeFile(join(vault, '.raw/source.md'), '原始材料，不允许修改\n')
+  await mkdir(join(vault, '40-Resources'), { recursive: true })
+  await writeFile(join(vault, '50-Wiki/hot.md'), '# Hot\n\n正在验证 pko 插件的 DSH 接入\n')
+  await writeFile(join(vault, '50-Wiki/index.md'), '---\nid: index\ntitle: 索引\ntype: wiki\ntier: supporting\ntags: [meta]\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 索引\n\n- [[cache]] — 缓存穿透\n')
+  await writeFile(join(vault, '40-Resources/cache.md'), '---\nid: cache\ntitle: 缓存穿透\ntype: note\ntier: core\ntags: [cache]\nsummary: 布隆过滤器与空值缓存\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n\n# 缓存穿透\n\n布隆过滤器 + 空值缓存是两种常见解法。\n')
+  await writeFile(join(vault, '.raw/source.md'), '原始材料，不允许改写\n')
 
-  const hooks = {
-    hooks: {
-      SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: `node ${CLI} hook --vault ${vault}` }] }],
-      UserPromptSubmit: [{ matcher: '', hooks: [{ type: 'command', command: `node ${CLI} hook --vault ${vault}` }] }],
-      PreToolUse: [
-        { matcher: 'write|edit', hooks: [{ type: 'command', command: `node ${CLI} hook --vault ${vault}` }] },
-        { matcher: 'bash', hooks: [{ type: 'command', command: `node ${CLI} hook --vault ${vault}` }] },
-      ],
-      PostToolUse: [{ matcher: 'write|edit', hooks: [{ type: 'command', command: `node ${CLI} hook --vault ${vault}` }] }],
-      Stop: [{ matcher: '', hooks: [{ type: 'command', command: `node ${CLI} hook --vault ${vault}` }] }],
-    },
-  }
-  await writeFile(join(dir, 'hooks.json'), `${JSON.stringify(hooks, null, 2)}\n`)
-  await writeFile(join(dir, 'overlay.yml'), [
+  // headless 只带 llm-deepseek-account，缺凭据层与 account 服务本体，补上后可用账号路由
+  const overlay = join(dir, 'overlay.yml')
+  await writeFile(overlay, [
     '- insert:',
-    '    - id: pko-e2e-hooks',
-    "      name: '@deepseek-ai/dsh-hooks-claude-code'",
-    '      config:',
-    `        configPath: ${join(dir, 'hooks.json')}`,
+    '    - id: credentials',
+    "      name: '@deepseek-ai/dsh-credentials-local'",
+    '    - id: authorization',
+    "      name: '@deepseek-ai/dsh-authorization'",
+    '    - id: deepseek-account',
+    "      name: '@deepseek-ai/dsh-deepseek-account-platform'",
+    '      config: { desktopPlatform: null }',
+    '    - id: agent-default-model',
+    "      name: '@deepseek-ai/dsh-agent-default-model'",
+    '      config: { provider: deepseek-account, model: deepseek-flash, reasoningEffort: high }',
     '',
   ].join('\n'))
-  return { vault, overlay: join(dir, 'overlay.yml') }
+  return { vault, overlay }
 }
 
-/** 跑一次 headless 会话，返回 stdout。 */
-function runSession(cwd, overlay, task) {
-  const result = spawnSync('dsh', ['--profile', 'headless', '--patch', overlay, '--json', task], {
-    cwd,
-    encoding: 'utf8',
-    timeout: TASK_TIMEOUT_MS,
-    env: { ...process.env },
-  })
-  const stderr = result.stderr ?? ''
-  if (/MISSING_CREDENTIAL|ACCOUNT_SIGN_IN_REQUIRED/.test(stderr)) {
-    return { blocked: stderr.split('\n').find((line) => /MISSING_CREDENTIAL|ACCOUNT_SIGN_IN_REQUIRED/.test(line)) ?? 'auth' }
+/** 解析 --json 事件流。 */
+function parseEvents(text) {
+  const events = []
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed === '' || trimmed.startsWith('dsh:') || trimmed.startsWith('[')) continue
+    try {
+      events.push(JSON.parse(trimmed))
+    } catch {
+      // 非 JSON 行（诊断输出）忽略
+    }
   }
-  return { blocked: null, stdout: result.stdout ?? '', stderr, status: result.status ?? 0 }
+  return events
+}
+
+/** 跑一次会话。 */
+function runSession(vault, overlay, task) {
+  const result = dsh(['--profile', PROFILE, '--patch', overlay, '--json', task], { cwd: vault, timeout: TASK_TIMEOUT_MS })
+  const stderr = result.stderr ?? ''
+  const blocked = /MISSING_CREDENTIAL|ACCOUNT_SIGN_IN_REQUIRED/.test(stderr)
+  return { blocked, stdout: result.stdout ?? '', stderr, events: parseEvents(result.stdout ?? '') }
 }
 
 const dir = await mkdtemp(join(tmpdir(), 'pko-e2e-'))
 const { vault, overlay } = await prepare(dir)
-console.log(`夹具 vault: ${vault}\n`)
+console.log(`夹具: ${vault}\n档案: ${PROFILE}\n`)
 
 let blocked = null
 let exitCode = 0
 
 try {
-  // ---- 会话 A：正常流程（注入 + 写入 + 归一化）----
-  console.log('▸ 会话 A：注入 + 正常写入')
-  const a = runSession(vault, overlay, [
-    '请做两件事：',
-    '1) 读取 40-Resources/concepts/cache-penetration.md；',
-    '2) 用 write 工具在 00-Inbox/session-note.md 写一条笔记。',
-    '要求：文件内容必须是纯 Markdown 正文，**不要写任何 YAML frontmatter**。写完只回一句“完成”。',
-  ].join('\n'))
+  // 建一次性 profile 并装插件
+  dsh(['--profile', PROFILE, '--from-default-profile', 'headless', '--dump-config'])
+  const install = dsh(['plugin', '--profile', PROFILE, 'add', `link:${PLUGIN}`], { timeout: 180_000 })
+  if (install.status !== 0) throw new Error(`安装插件失败：${install.stderr}`)
 
-  if (a.blocked !== null) {
-    blocked = a.blocked
+  // ---- 会话 A：工具调用 + 会话注入 ----
+  console.log('▸ 会话 A：让 agent 调用 pko_query')
+  const a = runSession(vault, overlay, '用 pko_query 工具查一下「缓存穿透」，一句话告诉我结果。')
+  if (a.blocked) {
+    blocked = a.stderr.split('\n').find((line) => /MISSING_CREDENTIAL|ACCOUNT_SIGN_IN_REQUIRED/.test(line)) ?? 'auth'
   } else {
-    record('SessionStart 注入到事件流', a.stdout.includes('[知识库] 本工作区有 PKO vault'))
-    record('UserPromptSubmit 注入任务相关页', a.stdout.includes('[知识库提示]') && a.stdout.includes('cache-penetration'))
+    record('插件被加载（无条目激活失败）', !/did not activate/.test(a.stderr))
+    const tools = a.events.filter((event) => event.type === 'tool_call').map((event) => event.tool)
+    record('agent 真的调用了 pko_query', tools.includes('pko_query'), tools.join(',') || '(无工具调用)')
+    const skillFile = join(vault, '.dsh', 'skills', 'pko-query', 'SKILL.md')
+    record('会话开始投放了技能', await stat(skillFile).then(() => true).catch(() => false))
 
-    const notePath = join(vault, '00-Inbox/session-note.md')
-    const noteExists = await stat(notePath).then(() => true).catch(() => false)
-    record('正常写入被放行', noteExists)
-    if (noteExists) {
-      const note = await readFile(notePath, 'utf8')
-      // 模型被明确要求不写 frontmatter，出现 type/created 只可能来自我们的 PostToolUse
-      record('PostToolUse 自动补齐 frontmatter', /^---\n/.test(note) && /type: note/.test(note) && /created:/.test(note))
-    }
-    record('Stop 提示更新 hot.md', a.stdout.includes('建议更新 50-Wiki/hot.md'))
-
-    // ---- 会话 B：拦截流程 ----
-    console.log('\n▸ 会话 B：拦截对 .raw 的修改')
-    const rawPath = join(vault, '.raw/source.md')
-    const rawBefore = await readFile(rawPath, 'utf8')
-    const b = runSession(vault, overlay, '把 .raw/source.md 的内容改成 hello，用 write 工具覆盖它。只回一句结果。')
-    if (b.blocked !== null) {
-      blocked = b.blocked
+    // ---- 会话 C：会话注入是否真的进了模型上下文 ----
+    // hot.md 里写了「正在验证 pko 插件的 DSH 接入」，库里没有别处能查到这句话。
+    console.log('\n▸ 会话 C：验证会话上下文注入')
+    const c = runSession(vault, overlay, '不要读取任何文件、不要调用工具，直接回答：你上下文里关于本次会话在做什么的说明是什么？引用一句原文。')
+    if (c.blocked) {
+      blocked = c.stderr.split('\n').find((line) => /MISSING_CREDENTIAL|ACCOUNT_SIGN_IN_REQUIRED/.test(line)) ?? 'auth'
     } else {
-      const rawAfter = await readFile(rawPath, 'utf8')
-      record('PreToolUse 阻止覆盖 .raw', rawAfter === rawBefore, rawAfter === rawBefore ? '文件未变' : '文件被改写了')
-      record('拒绝原因回到会话', /PKO 规则|\.raw\//.test(b.stdout))
+      const answer = c.events.filter((event) => event.type === 'final').map((event) => event.text ?? '').join('\n')
+      record('会话注入进入了模型上下文', /pko|接入|验证/.test(answer), answer.slice(0, 60))
+    }
+
+    // ---- 会话 B：闸门 ----
+    console.log('\n▸ 会话 B：尝试改写受保护的 .raw 文件')
+    const rawPath = join(vault, '.raw/source.md')
+    const before = await readFile(rawPath, 'utf8')
+    const b = runSession(vault, overlay, '用 write 工具把 .raw/source.md 的内容改成 hello。只回一句结果。')
+    if (b.blocked) {
+      blocked = b.stderr.split('\n').find((line) => /MISSING_CREDENTIAL|ACCOUNT_SIGN_IN_REQUIRED/.test(line)) ?? 'auth'
+    } else {
+      const after = await readFile(rawPath, 'utf8')
+      record('PreToolUse 阻止了 .raw 改写', after === before, after === before ? '文件未变' : '文件被改写')
+      const raw = b.stdout
+      record('拒绝原因出现在会话里', /PKO 规则|\.raw\//.test(raw))
     }
   }
-
-  const inbox = await readdir(join(vault, '00-Inbox')).catch(() => [])
-  console.log(`\n00-Inbox 产物: ${inbox.join(', ') || '(空)'}`)
 } catch (error) {
-  record('E2E 脚本自身异常', false, String(error))
+  record('E2E 自身异常', false, String(error).slice(0, 160))
 } finally {
+  // 清理一次性 profile
+  await rm(join(process.env.HOME ?? '', '.dsh', 'profiles', PROFILE), { recursive: true, force: true })
+
   if (blocked !== null) {
     console.log(`\nBLOCKED: ${blocked}`)
     exitCode = 2
@@ -139,7 +151,6 @@ try {
       exitCode = 1
     } else {
       await rm(dir, { recursive: true, force: true })
-      exitCode = 0
     }
   }
 }
