@@ -55,7 +55,7 @@ dsh plugin --profile web add link:"$PWD/packages/dsh"
 
 ```sh
 npm run pack:dsh                        # 打包成 tgz
-dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.0.tgz"
+dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.1.tgz"
 
 # 或者直接从 Git 仓库安装（需把仓库推到你自己的远端）
 dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#path:packages/dsh"

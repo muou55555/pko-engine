@@ -82,9 +82,9 @@ dsh plugin --profile web add link:"$PWD/packages/dsh"
 ```sh
 cd pko-engine
 pnpm install            # 首次需要，用于构建
-npm run pack:dsh        # 产出 dist/pko-dsh-0.1.0.tgz
+npm run pack:dsh        # 产出 dist/pko-dsh-0.1.1.tgz
 
-dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.0.tgz"
+dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.1.tgz"
 ```
 
 tgz 是快照：之后改源码不影响已装的版本；要更新就重新打包安装。
@@ -98,7 +98,7 @@ dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#pa
 锁定到某个 tag（推荐）：
 
 ```sh
-dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#v0.1.0&path:packages/dsh"
+dsh plugin --profile web add "git+https://github.com/muou55555/pko-engine.git#v0.1.1&path:packages/dsh"
 ```
 
 说明：
