@@ -22,7 +22,7 @@ async function makeVault(): Promise<string> {
 /** 跑一个 helper 子进程并解析 JSON。 */
 function runHelper(script: string, args: readonly string[]): Promise<{ ok: boolean; tag: string; name?: string }> {
   return new Promise((resolve, reject) => {
-    execFile(process.execPath, [join(HELPERS, script), ...args], { timeout: 30_000 }, (error, stdout) => {
+    execFile(process.execPath, [join(HELPERS, script), ...args], { timeout: 90_000 }, (error, stdout) => {
       const line = stdout.trim().split('\n').pop() ?? ''
       try {
         resolve(JSON.parse(line) as { ok: boolean; tag: string; name?: string })
@@ -59,7 +59,7 @@ test('崩溃一致性：持有者被杀后，锁在 TTL 后能被接管', async 
   const lockPath = join(vault, '.pko', 'lock.json')
   const child = spawn(process.execPath, [join(HELPERS, 'lock-holder.mjs'), lockPath, '30000'], { stdio: 'pipe' })
   await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('子进程未及时持锁')), 15_000)
+    const timer = setTimeout(() => reject(new Error('子进程未及时持锁')), 30_000)
     child.stdout?.on('data', (chunk: Buffer) => {
       if (chunk.toString().includes('HELD')) {
         clearTimeout(timer)
@@ -74,7 +74,7 @@ test('崩溃一致性：持有者被杀后，锁在 TTL 后能被接管', async 
   await new Promise((resolve) => child.once('exit', resolve))
 
   // TTL 设小：陈旧的死锁应被接管
-  const handle = await acquireLock(lockPath, { waitMs: 3_000, ttlMs: 100 })
+  const handle = await acquireLock(lockPath, { waitMs: 10_000, ttlMs: 100 })
   await handle.release()
 })
 

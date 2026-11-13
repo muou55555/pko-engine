@@ -26,20 +26,20 @@ async function buildVault(pageCount: number): Promise<string> {
   return root
 }
 
-test('性能：600 页库单次检索 < 3s，体检 < 10s', async () => {
+test('性能：600 页库单次检索 < 10s，体检 < 30s', async () => {
   const root = await buildVault(600)
 
   const startedRetrieve = performance.now()
   const result = await retrieve(root, '缓存穿透')
   const retrieveMs = performance.now() - startedRetrieve
   assert.ok(result.candidates.length > 0)
-  assert.ok(retrieveMs < 3000, `检索耗时 ${retrieveMs.toFixed(0)}ms 超过 3s`)
+  assert.ok(retrieveMs < 10_000, `检索耗时 ${retrieveMs.toFixed(0)}ms 超过 10s`)
 
   const startedDoctor = performance.now()
   const report = await runDoctor(root)
   const doctorMs = performance.now() - startedDoctor
   assert.ok(report.pages >= 600)
-  assert.ok(doctorMs < 10_000, `体检耗时 ${doctorMs.toFixed(0)}ms 超过 10s`)
+  assert.ok(doctorMs < 30_000, `体检耗时 ${doctorMs.toFixed(0)}ms 超过 30s`)
 
   console.log(`  · 600 页：检索 ${retrieveMs.toFixed(0)}ms，体检 ${doctorMs.toFixed(0)}ms`)
 })

@@ -142,7 +142,27 @@ packages/skills/*/SKILL.md   →  packages/dsh/lib/dsh/skills/*/SKILL.md
 
 ---
 
-## 七、提交前
+## 七、测试为什么串行跑
+
+`npm test` 带 `--test-concurrency=1`。原因不是慢，是**确定性**：
+
+- 并行跑时，`performance`（造 600 页库）、`concurrency`（起子进程抢锁）、`docs`（spawn CLI）
+  会互相争 CPU，偶发超时（实测约 1/5 概率挂一例，单文件压测 8 轮全过、串行 10 轮全过）
+- 串行整轮约 16 秒，换来的是结果稳定，值得
+
+想并行跑（更快、更抖）：
+
+```sh
+npm run test:parallel
+```
+
+如果你发现某个用例在串行下也不稳定，那才是真问题，按下面的方式定位：
+
+```sh
+node --test tests/<某个文件>.test.ts
+```
+
+## 八、提交前
 
 ```sh
 npm run test:all     # 测试 + 代码卫生 + 类型检查

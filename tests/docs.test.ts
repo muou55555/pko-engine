@@ -11,7 +11,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 /** 跑 CLI 并拿 stdout。 */
 function cli(args: readonly string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(process.execPath, [join(ROOT, 'packages/core/src/cli.ts'), ...args], { timeout: 20_000 }, (error, stdout) => {
+    execFile(process.execPath, [join(ROOT, 'packages/core/src/cli.ts'), ...args], { timeout: 60_000 }, (error, stdout) => {
       if (error !== null && (error as { code?: number }).code !== 2) reject(error)
       else resolve(String(stdout))
     })
