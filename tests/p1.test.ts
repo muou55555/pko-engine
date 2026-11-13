@@ -209,3 +209,12 @@ test('manifest：版本高于本进程支持时拒绝读取', async () => {
   const { readManifest } = await import('../packages/core/src/manifest.ts')
   await assert.rejects(() => readManifest(join(root, '.pko/manifest.json')), /manifest 版本/)
 })
+
+test('写入：vault 内指向外部的符号链接被拒绝', async () => {
+  const { symlink } = await import('node:fs/promises')
+  const root = await makeVault()
+  const outside = await mkdtemp(join(tmpdir(), 'pko-outside-'))
+  await symlink(outside, join(root, 'link'))
+  await assert.rejects(() => writePage({ vault: root, relPath: 'link/escaped.md', body: '# 逃逸' }), /越出 vault/)
+  await assert.rejects(() => readFile(join(outside, 'escaped.md'), 'utf8'), /ENOENT/)
+})

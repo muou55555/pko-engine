@@ -11,6 +11,12 @@
     "test": "node --test tests/*.test.ts",
     "doctor": "node packages/core/src/cli.ts doctor --vault ./fixtures/vault",
     "doctor:json": "node packages/core/src/cli.ts doctor --vault ./fixtures/vault --json",
-    "normalize:dry": "node packages/core/src/cli.ts normalize --vault ./fixtures/vault"
+    "normalize:dry": "node packages/core/src/cli.ts normalize --vault ./fixtures/vault",
+    "hygiene": "node scripts/hygiene.mjs",
+    "test:coverage": "node --test --experimental-test-coverage tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
 }

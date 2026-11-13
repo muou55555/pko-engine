@@ -4,6 +4,7 @@
  * 顺序是契约的一部分：先拿锁再读版本，先落文件再记日志，
  * 任何一步失败都不留下"日志说写了、文件其实没写"的状态。
  */
+import { realpathSync } from 'node:fs'
 import { appendFile, mkdir, stat } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { ConflictError, PkoError } from './errors.ts'
@@ -127,14 +128,42 @@ function applyExtra(page: WikiPage, extra: RawFields | undefined): WikiPage {
  * @returns 绝对路径
  * @throws PkoError 路径越出 vault
  */
+/** 构造越界错误。 */
+function escapeError(relPath: string): PkoError {
+  return new PkoError('PKO_PATH_ESCAPE', `写入路径越出 vault：${JSON.stringify(relPath)}`)
+}
+
+/** 判断一个绝对路径是否落在根目录内（含根本身）。 */
+function isInside(rootAbs: string, candidate: string): boolean {
+  return candidate === rootAbs || candidate.startsWith(`${rootAbs}${sep}`)
+}
+
 export function resolveInsideVault(root: string, relPath: string): string {
   const rel = normalizeRel(relPath)
-  const rootAbs = resolve(root)
-  const target = resolve(rootAbs, rel)
-  if (rel === '' || isAbsolute(rel) || (target !== rootAbs && !target.startsWith(`${rootAbs}${sep}`))) {
-    throw new PkoError('PKO_PATH_ESCAPE', `写入路径越出 vault：${JSON.stringify(relPath)}`)
+  // 根目录本身也可能是符号链接（macOS 的 /tmp → /private/tmp），统一用真实路径比较
+  let rootAbs = resolve(root)
+  try {
+    rootAbs = realpathSync(rootAbs)
+  } catch {
+    // 根目录尚不存在：保留字面路径，后续写入会自行创建
   }
-  return target
+  const target = resolve(rootAbs, rel)
+  if (rel === '' || isAbsolute(rel) || !isInside(rootAbs, target)) throw escapeError(relPath)
+
+  // 沿最深已存在祖先取真实路径：vault 内指向外部的符号链接会在这里暴露
+  let probe = target
+  for (let depth = 0; depth < 40; depth += 1) {
+    try {
+      if (!isInside(rootAbs, realpathSync(probe))) throw escapeError(relPath)
+      return target
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      const parent = dirname(probe)
+      if (parent === probe) return target
+      probe = parent
+    }
+  }
+  throw escapeError(relPath)
 }
 
 /**

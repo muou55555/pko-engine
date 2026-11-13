@@ -14,7 +14,7 @@ import { checkBash, checkWrite } from './policy.ts'
 import { atomicWrite, readIfExists } from './store.ts'
 import { parseFrontmatter } from './schema.ts'
 import { isPagePath, toPage, stemOf } from './vault.ts'
-import { existsFile, recordActivity } from './writer.ts'
+import { existsFile, recordActivity, resolveInsideVault } from './writer.ts'
 import { taskContext } from './context.ts'
 
 export interface HookOutcome {
@@ -110,7 +110,12 @@ async function postTool(options: HookOptions, input: Record<string, unknown>): P
   // 给它们加 frontmatter 会破坏内容
   if (!isPagePath(rel)) return OK
 
-  const abs = resolve(options.vault, rel)
+  let abs: string
+  try {
+    abs = resolveInsideVault(options.vault, rel)
+  } catch {
+    return OK // 越界或指向 vault 外的符号链接：不动它
+  }
   const now = options.now ?? new Date()
   const paths = vaultPaths(options.vault)
   const lock = await acquireLock(paths.lockFile)

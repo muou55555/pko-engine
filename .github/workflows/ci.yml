@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  verify:
+    # 只在 macOS 上验证：本项目明确不覆盖 Windows 路径
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 代码卫生
+        run: node scripts/hygiene.mjs
+      - name: 单元与集成测试
+        run: node --test tests/*.test.ts
+      - name: 覆盖率
+        run: node --test --experimental-test-coverage tests/*.test.ts
+      - name: 安装类型检查依赖
+        run: npm install --no-audit --no-fund --ignore-scripts
+      - name: 类型检查
+        run: npx tsc -p packages/core/tsconfig.json --noEmit
