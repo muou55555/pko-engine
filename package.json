@@ -21,7 +21,8 @@
     "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p packages/dsh/tsconfig.json --noEmit",
     "build": "npm run build:dsh && npm run typecheck",
     "test:all": "npm test && npm run hygiene && npm run typecheck",
-    "pack:dsh": "node scripts/pack-plugin.mjs"
+    "pack:dsh": "node scripts/pack-plugin.mjs",
+    "test:install": "node tests/e2e/install-methods.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

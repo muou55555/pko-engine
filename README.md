@@ -49,6 +49,16 @@ dsh plugin --profile web add link:"$PWD/packages/dsh"
 
 重启 DSH，在 vault 目录里打开一个会话，输入 `/pko-query` 试试。
 
+不想用源码链接？也可以：
+
+```sh
+npm run pack:dsh                        # 打包成 tgz
+dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.0.tgz"
+
+# 或者直接从 Git 仓库安装（需把仓库推到你自己的远端）
+dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#path:packages/dsh"
+```
+
 完整步骤（含前置条件、验证、排错）：见 **[安装手册](docs/INSTALL.md)**。
 日常怎么用：见 **[使用手册](docs/USAGE.md)**。
 

@@ -53,9 +53,16 @@ cp -R examples/minimal-vault ~/my-pko-vault
 
 ---
 
-## 三、安装（三种方式，选一个）
+## 三、安装（四种方式，选一个）
 
-### 方式 A：从源码安装（推荐，改动即时生效）
+| 方式 | 适合谁 | 需要发布到 npm 吗 |
+| --- | --- | --- |
+| A. 源码 `link:` | 自己开发、改代码 | 否 |
+| B. 本地 tgz | 自己长期使用、版本固定 | 否 |
+| C. Git 仓库 | 分发给别人 | 否 |
+| D. npm 包 | 公开发布后 | 是 |
+
+### 方式 A：源码 link（开发推荐）
 
 ```sh
 git clone <本仓库> pko-engine
@@ -68,23 +75,44 @@ dsh plugin --profile web add link:"$PWD/packages/dsh"
 
 `link:` 是指向源码的符号链接——之后改代码、重新 `npm run build:dsh`、重启 DSH 即可。
 
-### 方式 B：打包安装（不保留源码链接）
+### 方式 B：本地 tgz（稳定使用推荐）
 
 ```sh
 cd pko-engine
-npm run build:dsh
-cd packages/dsh && npm pack        # 产出 pko-dsh-0.1.0.tgz
+pnpm install            # 首次需要，用于构建
+npm run pack:dsh        # 产出 dist/pko-dsh-0.1.0.tgz
 
-dsh plugin --profile web add /绝对路径/pko-dsh-0.1.0.tgz
+dsh plugin --profile web add "$PWD/dist/pko-dsh-0.1.0.tgz"
 ```
 
-### 方式 C：从 npm 安装
+tgz 是快照：之后改源码不影响已装的版本；要更新就重新打包安装。
+
+### 方式 C：Git 仓库（不发布 npm 也能分发）
+
+```sh
+dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#path:packages/dsh"
+```
+
+锁定到某个 tag（推荐）：
+
+```sh
+dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#v0.1.0&path:packages/dsh"
+```
+
+说明：
+
+- `#<ref>&path:<子目录>` 是 pnpm 的语法；省略 ref 表示默认分支最新提交
+- 仓库**已提交构建产物**（`packages/dsh/lib/`），所以 git 安装不需要额外构建，也不会被 pnpm 的 `allowBuilds` 拦截
+- 如果你 fork 后改了源码，需要本地 `npm run build:dsh` 并提交 `lib/`，否则装到的是旧产物
+- 本地测试可以用 `git+file:///绝对路径/pko-engine#path:packages/dsh`
+
+### 方式 D：npm 包
 
 ```sh
 dsh plugin --profile web add @pko/dsh
 ```
 
-> 需要该包已发布到 npm。未发布时用方式 A 或 B。
+> 需要该包已发布到 npm。未发布时用 A / B / C。
 
 ### 安装后
 
@@ -132,7 +160,13 @@ ls ~/你的库/.dsh/skills
 
 期望看到 8 个目录：`pko-canvas`、`pko-daily`、`pko-ingest`、`pko-moc`、`pko-query`、`pko-save`、`pko-weekly`、`pko-wrap-up`。
 
-### 4. 工具可用
+### 4. 一条命令跑完安装验证
+
+```sh
+npm run test:install        # 自动验证 tgz 与 git 两种安装方式
+```
+
+### 5. 工具可用
 
 在会话里输入：
 
