@@ -1,9 +1,9 @@
 {
   "name": "@pko/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "PKO knowledge engine core: schema, vault scan, doctor",
+  "description": "PKO knowledge engine core: schema, vault scan, retrieval, context, write protocol, policy",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,5 +12,6 @@
   },
   "engines": {
     "node": ">=22.18"
-  }
+  },
+  "license": "MIT"
 }

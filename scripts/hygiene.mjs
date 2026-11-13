@@ -5,7 +5,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const SRC = join(ROOT, 'packages', 'core', 'src')
+const SOURCES = [join(ROOT, 'packages', 'core', 'src'), join(ROOT, 'packages', 'dsh', 'src')]
 
 const RULES = [
   { name: 'any 类型', pattern: /:\s*any\b|\bas any\b/, hint: '用具体类型或 unknown + 收窄' },
@@ -28,7 +28,7 @@ async function collect(dir) {
 }
 
 const problems = []
-for (const file of await collect(SRC)) {
+for (const file of (await Promise.all(SOURCES.map((dir) => collect(dir)))).flat()) {
   const text = await readFile(file, 'utf8')
   const rel = relative(ROOT, file)
   for (const rule of RULES) {

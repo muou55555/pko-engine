@@ -6,7 +6,7 @@
  */
 import { realpathSync } from 'node:fs';
 import { appendFile, mkdir, stat } from 'node:fs/promises';
-import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import { ConflictError, PkoError } from "./errors.js";
 import { sha256 } from "./hash.js";
 import { acquireLock } from "./lock.js";

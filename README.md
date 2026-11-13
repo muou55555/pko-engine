@@ -64,6 +64,7 @@ dsh plugin --profile web add "git+https://github.com/<你>/pko-engine.git#path:p
 - **[安装手册](docs/INSTALL.md)** —— 前置条件、四种安装方式、验证、排错
 - **[使用手册](docs/USAGE.md)** —— 技能、工具、工作流、写入规则
 - **[开发文档](docs/DEVELOPMENT.md)** —— 源码调试、开发循环、事件观测
+- **[架构文档](docs/ARCHITECTURE.md)** —— 分层、数据契约、写入协议、设计取舍
 
 ## 常用命令
 
@@ -97,7 +98,13 @@ tests/        单元 / 集成 / 功能 / 并发 / 性能 / 文档 / E2E
 
 ## 测试
 
-103 例本地测试 + 9 条真实会话断言。当前：行覆盖约 90%，`tsc` 0 error，卫生检查通过。
+单元 / 集成 / 功能 / 并发 / 崩溃一致性 / 性能 / 文档测试，外加真实 DSH 会话 E2E。
+
+```sh
+npm test              # 本地测试
+npm run test:e2e      # 真实会话（需要模型路由）
+npm run test:install  # tgz 与 git 两种安装方式
+```
 
 ## 许可
 

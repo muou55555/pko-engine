@@ -2,8 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { readFile, stat } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -27,7 +27,7 @@ test('文档：CLI 用法里列出全部已实现的子命令', async () => {
 
 test('文档：README 与手册引用的 npm 脚本都存在', async () => {
   const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')) as { scripts: Record<string, string> }
-  const docs = ['README.md', 'docs/INSTALL.md', 'docs/USAGE.md', 'docs/DEVELOPMENT.md']
+  const docs = ['README.md', 'docs/INSTALL.md', 'docs/USAGE.md', 'docs/DEVELOPMENT.md', 'docs/ARCHITECTURE.md']
   for (const doc of docs) {
     let text = ''
     try {
@@ -43,6 +43,23 @@ test('文档：README 与手册引用的 npm 脚本都存在', async () => {
       const target = match[1]
       const exists = await readFile(join(ROOT, target), 'utf8').then(() => true).catch(() => false)
       assert.ok(exists, `${doc} 引用了不存在的文件 ${target}`)
+    }
+  }
+})
+
+
+test('文档：站内相对链接都能解析到真实文件', async () => {
+  const docs = ['README.md', 'docs/INSTALL.md', 'docs/USAGE.md', 'docs/DEVELOPMENT.md', 'docs/ARCHITECTURE.md']
+  for (const doc of docs) {
+    const text = await readFile(join(ROOT, doc), 'utf8')
+    for (const match of text.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+      const target = match[1]
+      if (target.startsWith('http') || target.startsWith('#') || target.startsWith('mailto:')) continue
+      const clean = target.split('#')[0]
+      if (clean === '') continue
+      const resolved = join(dirname(join(ROOT, doc)), clean)
+      const exists = await stat(resolved).then(() => true).catch(() => false)
+      assert.ok(exists, `${doc} 里的链接指向了不存在的文件：${target}`)
     }
   }
 })
