@@ -86,8 +86,12 @@
 你：帮我建个知识库
 模型：要建在哪个目录？默认可以用当前目录 <路径>，也可以给别的路径。
 你：用 ~/Documents/my-vault
-模型：调用 pko_init(path: "~/Documents/my-vault")，建好后再调 pko_status 复查
+模型：调用 pko_init(path: "~/Documents/my-vault")
+     → 返回「库已就绪，无需再检查：结构完整（0 缺失）」
+     → 直接告诉用户建好了，不再跑 status / lint 复查
 ```
+
+只有当初始化后发现仍有缺失时，模型才会继续查。
 
 - **已有部分结构**（比如只有 `50-Wiki/`）：只补齐缺的部分，不重建、不覆盖
 - **不想被提示**：配置 `initPrompt: false`

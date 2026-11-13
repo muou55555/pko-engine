@@ -380,14 +380,21 @@ export const TOOL_SPECS: readonly ToolSpec[] = [
     },
     render: (_args, value) => {
       const result = value as { target: string; createdDirs: number; createdFiles: number; skipped: number; missingDirs: number }
-      if (result.createdDirs === 0 && result.createdFiles === 0) {
-        return text(`pko: ${result.target} 已经是标准结构，无需初始化。`)
+      // 结构完整时明确宣告就绪：模型无需再跑 status / lint 或 bash 打量目录
+      if (result.missingDirs === 0) {
+        const head = result.createdDirs === 0 && result.createdFiles === 0
+          ? `pko: ${result.target} 已经是标准结构。`
+          : `pko: 已初始化 ${result.target}，新建 ${result.createdDirs} 个目录、${result.createdFiles} 个文件（跳过已存在的 ${result.skipped} 项）。`
+        return text([
+          head,
+          '库已就绪，无需再检查：结构完整（0 缺失），目录与种子文件齐备。',
+          '不要再用 pko_status / pko_lint / bash 复查目录结构，直接把结果告诉用户即可。',
+          '下一步：需要时读 AGENTS.md 了解写入规范。',
+        ].join(String.fromCharCode(10)))
       }
-      const tail = result.missingDirs === 0 ? '结构完整（0 缺失）。' : `仍有 ${result.missingDirs} 个标准目录缺失。`
       return text([
-        `pko: 已初始化 ${result.target}。`,
-        `新建 ${result.createdDirs} 个目录、${result.createdFiles} 个文件（跳过已存在的 ${result.skipped} 项）。${tail}`,
-        '下一步：读 AGENTS.md 了解写入规范。',
+        `pko: 已初始化 ${result.target}，新建 ${result.createdDirs} 个目录、${result.createdFiles} 个文件（跳过已存在的 ${result.skipped} 项）。`,
+        `注意：仍有 ${result.missingDirs} 个标准目录缺失，可用 pko_status 查看具体缺哪些。`,
       ].join(String.fromCharCode(10)))
     },
     needsVault: false,

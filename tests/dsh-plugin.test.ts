@@ -216,3 +216,29 @@ test('pko_init：已有部分结构时补齐，不重建', async () => {
   const hot = await (await import('node:fs/promises')).readFile(join(dir, '50-Wiki/hot.md'), 'utf8')
   assert.equal(hot, '# 我的热缓存\n', '不得覆盖用户已有文件')
 })
+
+
+test('pko_init：结构完整时明确宣告"库已就绪，无需再检查"', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const tool = host.tools.find((candidate) => candidate.name === 'pko_init') as unknown as {
+    output: { render(args: Record<string, unknown>, value: unknown): Array<{ text: string }> }
+  }
+
+  const ready = tool.output.render({}, { target: '/x', createdDirs: 38, createdFiles: 13, skipped: 0, missingDirs: 0 })
+  assert.match(ready[0]?.text ?? '', /库已就绪，无需再检查/)
+  assert.match(ready[0]?.text ?? '', /不要再用 pko_status/)
+
+  const incomplete = tool.output.render({}, { target: '/x', createdDirs: 5, createdFiles: 1, skipped: 0, missingDirs: 3 })
+  assert.doesNotMatch(incomplete[0]?.text ?? '', /库已就绪/, '结构不完整时不得宣告就绪')
+  assert.match(incomplete[0]?.text ?? '', /仍有 3 个标准目录缺失/)
+})
+
+test('pko_init：真跑一次后 missingDirs 为 0（能触发就绪分支）', async () => {
+  const host = makeHost()
+  apply(host.ctx as never, {})
+  const dir = await mkdtemp(join(tmpdir(), 'pko-ready-'))
+  const result = await callTool(host, 'pko_init', {}, dir) as { missingDirs: number; isVault: boolean }
+  assert.equal(result.missingDirs, 0)
+  assert.equal(result.isVault, true)
+})

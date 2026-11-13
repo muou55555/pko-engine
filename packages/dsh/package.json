@@ -1,6 +1,6 @@
 {
   "name": "@pko/dsh",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "PKO knowledge engine for DeepSeek Harness: 8 tools, session context injection, write guards, and bundled skills for an Obsidian vault.",
   "keywords": [
     "dsh",
